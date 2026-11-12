@@ -36,5 +36,5 @@ it('loads the inbox and opens a chat, with a back button for mobile', async () =
   expect(firstRow).toHaveTextContent('You: Hello from the test')
 
   await ui.click(screen.getByRole('button', { name: 'Back to chats' }))
-  expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { level: 2, name: 'Priya Sharma' })).not.toBeInTheDocument()
 })

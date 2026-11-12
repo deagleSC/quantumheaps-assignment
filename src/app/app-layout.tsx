@@ -5,6 +5,7 @@ import { InfoPanel } from '@/features/groups/components/info-panel'
 import { InfoSheet } from '@/features/groups/components/info-sheet'
 import { DESKTOP_QUERY, useMediaQuery } from '@/shared/hooks/use-media-query'
 import { cn } from '@/shared/lib/utils'
+import type { ReactNode } from 'react'
 import { useUiStore } from '@/store'
 
 /**
@@ -13,13 +14,16 @@ import { useUiStore } from '@/store'
  * - tablet (768px+): sidebar (320px) + chat; info opens as a drawer
  * - desktop (1024px+): wider sidebar (384px) + chat + info as a third column
  */
-export function AppLayout() {
+export function AppLayout({ sidebarActions }: { sidebarActions?: ReactNode }) {
   const activeId = useUiStore((s) => s.activeConversationId)
   const isInfoOpen = useUiStore((s) => s.isInfoPanelOpen)
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   return (
     <div className="flex h-dvh overflow-hidden">
+      <header className="sr-only">
+        <h1>Quantum Chat</h1>
+      </header>
       <aside
         aria-label="Chat list"
         className={cn(
@@ -27,7 +31,7 @@ export function AppLayout() {
           activeId ? 'hidden' : 'flex',
         )}
       >
-        <ConversationSidebar />
+        <ConversationSidebar actions={sidebarActions} />
       </aside>
       <main className={cn('min-w-0 flex-1 flex-col md:flex', activeId ? 'flex' : 'hidden')}>
         {activeId ? <ChatView key={activeId} conversationId={activeId} /> : <WelcomePane />}

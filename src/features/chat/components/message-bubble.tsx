@@ -5,9 +5,11 @@ import { Button } from '@/shared/components/ui/button'
 import { useLongPress } from '@/shared/hooks/use-long-press'
 import { formatMessageTime } from '@/shared/lib/format-time'
 import { cn } from '@/shared/lib/utils'
-import { messageActions, useUserStore } from '@/store'
+import { messageActions, useUiStore, useUserStore } from '@/store'
 import type { Message } from '@/types/message.types'
+import { messageMatches } from '../utils/highlight'
 import { senderColor } from '../utils/sender-color'
+import { HighlightedText } from './highlighted-text'
 import { MessageActions } from './message-actions'
 import { MessageStatusIcon } from './message-status-icon'
 import { ReactionChips } from './reaction-chips'
@@ -32,6 +34,11 @@ export const MessageBubble = memo(function MessageBubble({
 }: MessageBubbleProps) {
   const sender = useUserStore((s) => (isGroup && !isOwn ? s.byId[message.senderId] : undefined))
   const currentUserId = useUserStore((s) => s.currentUserId)
+  // Only bubbles that match the in-chat search subscribe to the query.
+  const searchQuery = useUiStore((s) =>
+    s.messageSearch && messageMatches(message, s.messageSearch.query) ? s.messageSearch.query : '',
+  )
+  const isActiveMatch = useUiStore((s) => s.messageSearch?.activeMatchId === message.id)
   const [menuOpen, setMenuOpen] = useState(false)
   const openMenu = useCallback(() => setMenuOpen(true), [])
   const longPress = useLongPress(openMenu)
@@ -81,6 +88,7 @@ export const MessageBubble = memo(function MessageBubble({
               : 'bg-bubble-in text-bubble-in-foreground',
             isLastInCluster && (isOwn ? 'rounded-br-md' : 'rounded-bl-md'),
             message.status === 'failed' && 'opacity-80',
+            isActiveMatch && 'ring-offset-chat-bg ring-2 ring-amber-400 ring-offset-2',
           )}
         >
           {showAvatar && isFirstInCluster && (
@@ -94,7 +102,9 @@ export const MessageBubble = memo(function MessageBubble({
           {message.isDeleted ? (
             <p className="italic opacity-70">This message was deleted</p>
           ) : (
-            <p className="break-words whitespace-pre-wrap">{message.content}</p>
+            <p className="break-words whitespace-pre-wrap">
+              <HighlightedText text={message.content} query={searchQuery} />
+            </p>
           )}
           <span
             className={cn(
