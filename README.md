@@ -2,6 +2,8 @@
 
 A responsive chat app in the style of a simplified Slack or WhatsApp Web, built for the Quantum Heaps Senior Frontend Developer take-home. It covers every functional requirement in the brief (sections A–E) and all eight optional challenges, against a mock backend that runs entirely in the browser.
 
+**Live demo:** https://quantumheaps-assignment.vercel.app
+
 **Stack:** React 19 · TypeScript (strict) · Vite 6 · Tailwind CSS 4 · shadcn/ui (Radix) · Zustand 5 + immer · React Hook Form + zod · Lucide · TanStack Virtual · Vitest + Testing Library
 
 ![Desktop, light theme, with the group info panel](docs/screenshots/desktop-light.png)
