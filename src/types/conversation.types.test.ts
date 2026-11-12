@@ -1,4 +1,4 @@
-import { isGroup, type Conversation } from './index'
+import { isGroup, type Conversation } from './conversation.types'
 
 it('narrows conversations with isGroup', () => {
   const direct: Conversation = {

@@ -1,6 +1,6 @@
 import { AlertTriangle, RotateCw } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
-import { EmptyState } from './EmptyState'
+import { EmptyState } from './empty-state'
 
 export interface ErrorStateProps {
   title?: string

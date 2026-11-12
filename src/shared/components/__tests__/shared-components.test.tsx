@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Inbox } from 'lucide-react'
-import { EmptyState } from '../EmptyState'
-import { ErrorState } from '../ErrorState'
-import { OnlineAvatar } from '../OnlineAvatar'
+import { EmptyState } from '../empty-state'
+import { ErrorState } from '../error-state'
+import { OnlineAvatar } from '../online-avatar'
 import { getInitials } from '@/shared/lib/initials'
-import { Spinner } from '../Spinner'
+import { Spinner } from '../spinner'
 import { cn } from '@/shared/lib/utils'
 
 describe('getInitials', () => {

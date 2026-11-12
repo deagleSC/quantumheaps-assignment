@@ -1,5 +1,5 @@
 import { MessagesSquare } from 'lucide-react'
-import { EmptyState } from '@/shared/components/EmptyState'
+import { EmptyState } from '@/shared/components/empty-state'
 import { TooltipProvider } from '@/shared/components/ui/tooltip'
 import { Toaster } from '@/shared/components/ui/sonner'
 
