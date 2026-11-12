@@ -11,6 +11,7 @@ import { messageMatches } from '../utils/highlight'
 import { senderColor } from '../utils/sender-color'
 import { HighlightedText } from './highlighted-text'
 import { MessageActions } from './message-actions'
+import { MessageAttachment } from './message-attachment'
 import { MessageStatusIcon } from './message-status-icon'
 import { ReactionChips } from './reaction-chips'
 import { ReplyQuote } from './reply-quote'
@@ -99,12 +100,17 @@ export const MessageBubble = memo(function MessageBubble({
           {message.replyToId && !message.isDeleted && (
             <ReplyQuote messageId={message.replyToId} isOwnBubble={isOwn} />
           )}
+          {message.attachment && !message.isDeleted && (
+            <MessageAttachment attachment={message.attachment} isOwn={isOwn} />
+          )}
           {message.isDeleted ? (
             <p className="italic opacity-70">This message was deleted</p>
           ) : (
-            <p className="break-words whitespace-pre-wrap">
-              <HighlightedText text={message.content} query={searchQuery} />
-            </p>
+            message.content && (
+              <p className="break-words whitespace-pre-wrap">
+                <HighlightedText text={message.content} query={searchQuery} />
+              </p>
+            )
           )}
           <span
             className={cn(

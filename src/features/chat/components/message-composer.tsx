@@ -1,4 +1,4 @@
-import { Check, SendHorizontal } from 'lucide-react'
+import { Check, Paperclip, SendHorizontal } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import {
@@ -8,9 +8,12 @@ import {
   InputGroupTextarea,
 } from '@/shared/components/ui/input-group'
 import { Kbd } from '@/shared/components/ui/kbd'
+import { notify } from '@/shared/lib/notify'
 import { messageActions, useMessageStore, useUiStore } from '@/store'
 import type { ConversationId } from '@/types/common.types'
+import { useAttachment } from '../hooks/use-attachment'
 import { useLastOwnMessageGetter } from '../hooks/use-last-own-message'
+import { AttachmentPreview } from './attachment-preview'
 import { EditPreview } from './edit-preview'
 import { ReplyPreview } from './reply-preview'
 
@@ -24,13 +27,22 @@ export const MAX_MESSAGE_LENGTH = 4000
 const shouldAutoFocus = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
 
+export interface MessageComposerProps {
+  conversationId: ConversationId
+  /** Shared attachment state (the chat view also accepts dropped files). */
+  attachment?: ReturnType<typeof useAttachment>
+}
+
 /**
  * Message input (React Hook Form + shadcn InputGroup). Two modes:
  * - compose: Enter sends, Shift+Enter adds a line, Esc cancels a reply,
- *   ↑ in an empty box edits your last message
+ *   ↑ in an empty box edits your last message, 📎 / paste attaches a file
  * - edit: pre-filled with the message; Enter saves, Esc cancels
  */
-export function MessageComposer({ conversationId }: { conversationId: ConversationId }) {
+export function MessageComposer({ conversationId, attachment: shared }: MessageComposerProps) {
+  const own = useAttachment({ onError: notify.error })
+  const attachment = shared ?? own
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const replyingToId = useUiStore((s) => s.replyingToId)
   const editingId = useUiStore((s) => s.editingId)
   const setReplyingTo = useUiStore((s) => s.setReplyingTo)
@@ -47,7 +59,7 @@ export function MessageComposer({ conversationId }: { conversationId: Conversati
   })
   const { ref: registerRef, ...field } = register('content', { maxLength: MAX_MESSAGE_LENGTH })
   const value = watch('content')
-  const canSubmit = value.trim().length > 0
+  const canSubmit = value.trim().length > 0 || (!editingId && !!attachment.pending)
 
   const focusAtEnd = () => {
     const el = textareaRef.current
@@ -79,13 +91,18 @@ export function MessageComposer({ conversationId }: { conversationId: Conversati
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId, reset])
 
-  const submit = handleSubmit(({ content }) => {
-    if (!content.trim()) return
+  const submit = handleSubmit(async ({ content }) => {
     if (editingId) {
-      void messageActions.edit(editingId, content)
-    } else {
-      void messageActions.send({ conversationId, content, replyToId: replyingToId ?? undefined })
+      if (content.trim()) void messageActions.edit(editingId, content)
+    } else if (content.trim() || attachment.pending) {
       reset()
+      const file = await attachment.take()
+      void messageActions.send({
+        conversationId,
+        content,
+        replyToId: replyingToId ?? undefined,
+        attachment: file ?? undefined,
+      })
     }
     textareaRef.current?.focus()
   })
@@ -111,8 +128,35 @@ export function MessageComposer({ conversationId }: { conversationId: Conversati
   return (
     <div className="bg-background shrink-0 border-t">
       {editingId ? <EditPreview /> : <ReplyPreview />}
+      {!editingId && attachment.pending && (
+        <AttachmentPreview attachment={attachment.pending} onRemove={attachment.clear} />
+      )}
       <form onSubmit={submit} className="p-3" aria-label="Send a message">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="Attach a file"
+          onChange={(e) => {
+            attachment.select(e.target.files?.[0])
+            e.target.value = '' // allow picking the same file again
+            textareaRef.current?.focus()
+          }}
+        />
         <InputGroup className="bg-muted/40 rounded-2xl">
+          {!editingId && (
+            <InputGroupAddon align="inline-start" className="self-end pb-2">
+              <InputGroupButton
+                size="icon-sm"
+                aria-label="Attach a file"
+                className="rounded-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip />
+              </InputGroupButton>
+            </InputGroupAddon>
+          )}
           <InputGroupTextarea
             {...field}
             ref={(el) => {
@@ -125,6 +169,13 @@ export function MessageComposer({ conversationId }: { conversationId: Conversati
             aria-label="Message"
             className="[field-sizing:content] max-h-40 min-h-11 py-3 text-[15px]"
             onKeyDown={onKeyDown}
+            onPaste={(e) => {
+              const file = e.clipboardData.files[0]
+              if (file && !editingId) {
+                e.preventDefault()
+                attachment.select(file)
+              }
+            }}
           />
           <InputGroupAddon align="inline-end" className="self-end pb-2">
             <InputGroupButton
