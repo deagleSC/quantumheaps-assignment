@@ -8,6 +8,7 @@
     Segoe UI, Helvetica Neue, Helvetica, Lucida Grande, Arial, Ubuntu, Cantarell, Fira Sans,
     sans-serif;
   --color-chat-bg: var(--chat-bg);
+  --color-skeleton: var(--skeleton);
   --color-bubble-out: var(--bubble-out);
   --color-bubble-out-foreground: var(--bubble-out-foreground);
   --color-bubble-in: var(--bubble-in);
@@ -126,6 +127,8 @@
   --status-read: oklch(0.6 0.14 235);
   --online: oklch(0.7 0.19 149);
   --bubble-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13);
+  /* Neutral grey loading placeholders (visible on both the grey sidebar and the beige chat). */
+  --skeleton: oklch(0.9 0.006 250);
   --destructive-foreground: oklch(1 0 0);
   --font-sans:
     Segoe UI, Helvetica Neue, Helvetica, Lucida Grande, Arial, Ubuntu, Cantarell, Fira Sans,
@@ -193,6 +196,7 @@
   --status-read: oklch(0.78 0.12 230);
   --online: oklch(0.74 0.19 149);
   --bubble-shadow: 0 1px 0.5px rgb(0 0 0 / 0.3);
+  --skeleton: oklch(0.3 0.03 200);
   --destructive-foreground: oklch(0.9436 0.0051 228.8204);
   --radius: 1rem;
   --font-sans:
