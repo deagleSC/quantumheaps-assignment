@@ -95,8 +95,10 @@
   --muted: oklch(0.9605 0.0046 258.3248);
   /* Theme value 0.5589 is 4.1:1 on the background; darkened slightly for WCAG AA. */
   --muted-foreground: oklch(0.5 0.0255 233.7233);
-  --accent: oklch(0.761 0.2015 149.7403);
-  --accent-foreground: oklch(1 0 0);
+  /* Theme accent was a vivid green with white text (~2:1). It drives skeletons and
+     menu/ghost-button hovers, so it's softened to a pale mint with dark teal text. */
+  --accent: oklch(0.945 0.025 165);
+  --accent-foreground: oklch(0.3 0.06 182);
   --destructive: oklch(0.6257 0.2058 29.0773);
   --border: oklch(0.9436 0.0051 228.8204);
   --input: oklch(0.9436 0.0051 228.8204);
@@ -162,8 +164,8 @@
   --secondary-foreground: oklch(0.6509 0.1283 170.4258);
   --muted: oklch(0.2456 0.0195 239.1061);
   --muted-foreground: oklch(0.6637 0.0236 235.1968);
-  --accent: oklch(0.761 0.2015 149.7403);
-  --accent-foreground: oklch(0.2153 0.0187 235.1251);
+  --accent: oklch(0.3 0.03 200);
+  --accent-foreground: oklch(0.9436 0.0051 228.8204);
   --destructive: oklch(0.6257 0.2058 29.0773);
   --border: oklch(0.3351 0.0253 234.8586);
   --input: oklch(0.3351 0.0253 234.8586);

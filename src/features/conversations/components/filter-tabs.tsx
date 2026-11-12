@@ -39,8 +39,13 @@ export function FilterTabs({ header, children, className }: FilterTabsProps) {
       <div className="space-y-3 px-4 pb-3">
         {header}
         <TabsList className="w-full" aria-label="Filter chats">
+          {/* No focus ring: tabs select on focus, so the active pill already marks focus. */}
           {FILTERS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="text-muted-foreground gap-1.5">
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="text-muted-foreground gap-1.5 focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none"
+            >
               {label}
               {value === 'unread' && unreadChats > 0 && (
                 <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4 font-semibold">
