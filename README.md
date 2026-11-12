@@ -4,7 +4,7 @@ A responsive chat app in the style of a simplified Slack or WhatsApp Web, built 
 
 **Live demo:** https://quantumheaps-assignment.vercel.app
 
-**Theme:** the [tweakcn “Whatsapp”](https://tweakcn.com/r/themes/cmmbmmxsb000104l5fqg5b4x3) shadcn theme. Chat bubbles and backgrounds are tuned to match it, and the light-mode muted text is darkened slightly to meet WCAG AA contrast.
+**Theme:** the [tweakcn “Whatsapp”](https://tweakcn.com/r/themes/cmmbmmxsb000104l5fqg5b4x3) shadcn theme, adapted: bubbles and chat background tuned to match; the vivid accent softened to a pale mint for hovers (it was ~2:1 contrast); grey loading skeletons; no focus ring on the filter tabs; light-mode muted text darkened slightly to meet WCAG AA.
 
 **Stack:** React 19 · TypeScript (strict) · Vite 6 · Tailwind CSS 4 · shadcn/ui (Radix) · Zustand 5 + immer · React Hook Form + zod · Lucide · TanStack Virtual · Vitest + Testing Library
 
