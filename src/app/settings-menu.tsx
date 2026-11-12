@@ -20,7 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
-import { appActions, connectionActions, useConnectionStore, useUiStore } from '@/store'
+import {
+  appActions,
+  connectionActions,
+  realtimeActions,
+  useConnectionStore,
+  useUiStore,
+} from '@/store'
 
 /** Sidebar settings: shortcuts help and demo controls. */
 export function SettingsMenu() {
@@ -50,6 +56,10 @@ export function SettingsMenu() {
           >
             <CloudOff /> Simulate offline
           </DropdownMenuCheckboxItem>
+          <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+            Realtime:{' '}
+            {realtimeActions.transportKind() === 'websocket' ? 'WebSocket' : 'in-memory simulator'}
+          </DropdownMenuLabel>
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirmReset(true)}>
             <RotateCcw /> Reset demo data…
           </DropdownMenuItem>

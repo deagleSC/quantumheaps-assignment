@@ -12,6 +12,9 @@ const isViewing = (conversationId: string) =>
   (typeof document === 'undefined' || document.visibilityState === 'visible')
 
 export const realtimeActions = {
+  /** 'memory' (simulator) or 'websocket'. */
+  transportKind: () => realtimeServices.kind(),
+
   /** Subscribes every realtime event to the stores. Returns a disconnect function. */
   connect: (): (() => void) =>
     realtimeServices.connect({

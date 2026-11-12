@@ -225,6 +225,21 @@ export class MockDb {
     })
   }
 
+  /**
+   * Inserts a message created elsewhere (by the WebSocket server, or a client
+   * message the server is told about), keeping its id. Idempotent.
+   */
+  insertExternal(message: Message): Message {
+    const existing = this.messagesById.get(message.id)
+    if (existing) return clone(existing)
+    const saved = this.insert(structuredClone(message))
+    if (message.senderId !== this.currentUserId && message.kind === 'text') {
+      this.requireConversation(message.conversationId).unreadCount += 1
+      this.changed('conversations')
+    }
+    return saved
+  }
+
   /** Inserts a message from someone else; bumps the unread count. */
   insertIncomingMessage(
     conversationId: ConversationId,

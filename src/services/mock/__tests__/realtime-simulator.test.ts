@@ -42,6 +42,14 @@ const send = (content = 'hi') =>
   db.insertOwnMessage({ conversationId: 'c-daniel', content, clientId: 't' })
 
 describe('RealtimeSimulator outgoing flow', () => {
+  beforeEach(() => {
+    // Running, with background activity pushed outside these tests' time window.
+    sim.configure({
+      config: { incomingIntervalMs: { min: 1e6, max: 1e6 }, presenceIntervalMs: 1e6 },
+    })
+    sim.start()
+  })
+
   it('progresses sent → delivered → read, then typing → reply', () => {
     const msg = send()
     sim.handleOutgoingMessage(msg)
@@ -65,7 +73,8 @@ describe('RealtimeSimulator outgoing flow', () => {
     const reply = (events.at(-1)!.payload as RealtimeEventMap['message:new']).message
     expect(reply).toMatchObject({ conversationId: 'c-daniel', senderId: 'u-daniel' })
     expect(db.getConversation('c-daniel').lastMessageId).toBe(reply.id)
-    expect(sim.pendingTimerCount).toBe(0)
+    // Only the background timers remain (next incoming message + presence interval).
+    expect(sim.pendingTimerCount).toBe(2)
   })
 
   it('sends one reply for rapid messages and stops the earlier typing indicator', () => {
@@ -80,10 +89,16 @@ describe('RealtimeSimulator outgoing flow', () => {
 
   it('skips the reply when replyProbability says no', () => {
     const quiet = new RealtimeSimulator({
-      config: { ...config, replyProbability: 0 },
+      config: {
+        ...config,
+        replyProbability: 0,
+        incomingIntervalMs: { min: 1e6, max: 1e6 },
+        presenceIntervalMs: 1e6,
+      },
       random: () => 0.5,
       getDb: () => db,
     })
+    quiet.start()
     const seen: string[] = []
     quiet.on('message:new', () => seen.push('new'))
     quiet.handleOutgoingMessage(send())
@@ -134,8 +149,25 @@ describe('RealtimeSimulator background activity', () => {
     expect(events).toHaveLength(count)
   })
 
+  it('buffers outgoing messages while stopped and handles them on start()', () => {
+    const msg = send()
+    sim.handleOutgoingMessage(msg)
+    vi.advanceTimersByTime(5000)
+    expect(events).toEqual([])
+    sim.configure({
+      config: { incomingIntervalMs: { min: 1e6, max: 1e6 }, presenceIntervalMs: 1e6 },
+    })
+    sim.start()
+    vi.advanceTimersByTime(100)
+    expect(events.at(-1)).toMatchObject({
+      type: 'message:status',
+      payload: { status: 'delivered' },
+    })
+  })
+
   it('configure() changes timing and randomness', () => {
-    sim.configure({ config: { deliveredDelayMs: 10 } })
+    sim.configure({ config: { deliveredDelayMs: 10, incomingIntervalMs: { min: 1e6, max: 1e6 } } })
+    sim.start()
     const msg = send()
     sim.handleOutgoingMessage(msg)
     vi.advanceTimersByTime(10)

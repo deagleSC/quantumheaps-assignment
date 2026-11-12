@@ -19,6 +19,15 @@ export type RealtimeEventMap = {
 
 export type RealtimeEventType = keyof RealtimeEventMap
 
+/** Every event type, for code that forwards all of them (e.g. the WebSocket server). */
+export const REALTIME_EVENT_TYPES: RealtimeEventType[] = [
+  'message:new',
+  'message:status',
+  'typing:start',
+  'typing:stop',
+  'presence:change',
+]
+
 export interface RealtimeSimulatorOptions {
   config?: Partial<RealtimeSimulatorConfig>
   random?: Rng
@@ -36,6 +45,7 @@ type Timer = ReturnType<typeof setTimeout>
  * returns an unsubscribe function.
  */
 export class RealtimeSimulator {
+  readonly kind = 'memory' as const
   private readonly emitter = new TypedEmitter<RealtimeEventMap>()
   private config: RealtimeSimulatorConfig
   private random: Rng
@@ -45,6 +55,8 @@ export class RealtimeSimulator {
   /** Pending reply per conversation, so rapid sends produce one reply. */
   private pendingReplies = new Map<ConversationId, { timers: Timer[]; typingUserId?: UserId }>()
   private running = false
+  /** Outgoing messages received while stopped; handled on the next start(). */
+  private buffered: Message[] = []
 
   constructor(options: RealtimeSimulatorOptions = {}) {
     this.config = { ...defaultRealtimeConfig, ...options.config }
@@ -74,6 +86,9 @@ export class RealtimeSimulator {
   start(): void {
     if (this.running) return
     this.running = true
+    const buffered = this.buffered
+    this.buffered = []
+    buffered.forEach((m) => this.handleOutgoingMessage(m))
     this.scheduleNextIncoming()
     this.intervals.add(setInterval(() => this.flipRandomPresence(), this.config.presenceIntervalMs))
   }
@@ -88,9 +103,10 @@ export class RealtimeSimulator {
     this.pendingReplies.clear()
   }
 
-  /** `stop()` plus removing every listener. */
+  /** `stop()` plus removing every listener and anything buffered. */
   dispose(): void {
     this.stop()
+    this.buffered = []
     this.emitter.removeAllListeners()
   }
 
@@ -99,6 +115,11 @@ export class RealtimeSimulator {
    * Emits delivered → read, then typing → reply (with `replyProbability`).
    */
   handleOutgoingMessage(message: Message): void {
+    // Like a socket that is disconnected: hold it until we're started again.
+    if (!this.running) {
+      this.buffered.push(message)
+      return
+    }
     const { deliveredDelayMs, readDelayMs, typingDelayMs, typingDurationMs } = this.config
     const { conversationId, id } = message
 

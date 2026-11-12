@@ -4,6 +4,7 @@ import type { Conversation, GroupConversation } from '@/types/conversation.types
 import type { Message, MessagePage, SendMessageInput } from '@/types/message.types'
 import type { User } from '@/types/user.types'
 import { OFFLINE_MESSAGE } from '@/shared/lib/network'
+import type { ServerFrame } from '@/services/realtime/protocol'
 import { MockDb } from './mock-db'
 import {
   clearPersisted,
@@ -171,5 +172,32 @@ export const mockApi = {
 
 export type MockApi = typeof mockApi
 
-// In the browser, persist the fake backend to IndexedDB. Tests opt in explicitly.
-if (import.meta.env.MODE !== 'test') void initMockApi({ persist: true })
+/**
+ * Keeps this (REST) backend in sync with events from the separate WebSocket
+ * server, the way a real backend would share one database. Unknown ids are
+ * ignored (e.g. a message this backend never saw).
+ */
+export function applyServerEvent(frame: ServerFrame): void {
+  const db = getMockDb()
+  try {
+    switch (frame.type) {
+      case 'message:new':
+        db.insertExternal(frame.payload.message)
+        break
+      case 'message:status':
+        db.setMessageStatus(frame.payload.messageId, frame.payload.status)
+        break
+      case 'presence:change':
+        db.setPresence(frame.payload.userId, frame.payload.isOnline)
+        break
+      default:
+        break // typing is transient: nothing to store
+    }
+  } catch {
+    // Out of sync with the server for this id: skip.
+  }
+}
+
+// In the browser, persist the fake backend to IndexedDB. Tests (and the Node
+// WebSocket server, which has no import.meta.env) don't.
+if (import.meta.env?.MODE && import.meta.env.MODE !== 'test') void initMockApi({ persist: true })
