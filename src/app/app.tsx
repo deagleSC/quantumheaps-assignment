@@ -7,7 +7,9 @@ import { conversationActions } from '@/store'
 import { AppLayout } from './app-layout'
 import { useUnreadDocumentTitle } from './hooks/use-document-title'
 import { useGlobalShortcuts } from './hooks/use-global-shortcuts'
+import { useNetworkStatus } from './hooks/use-network-status'
 import { useRealtimeBridge } from './hooks/use-realtime-bridge'
+import { OfflineBanner } from './offline-banner'
 import { SettingsMenu } from './settings-menu'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
@@ -27,11 +29,15 @@ export function App() {
   useRealtimeBridge()
   useGlobalShortcuts()
   useUnreadDocumentTitle()
+  useNetworkStatus()
   const theme = useApplyTheme()
 
   return (
     <TooltipProvider delayDuration={300}>
-      <AppLayout sidebarActions={<SidebarActions />} />
+      <div className="flex h-dvh flex-col">
+        <OfflineBanner />
+        <AppLayout sidebarActions={<SidebarActions />} />
+      </div>
       <ShortcutsDialog />
       <Toaster theme={theme} position="bottom-right" />
     </TooltipProvider>

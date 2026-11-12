@@ -1,6 +1,7 @@
 import type { MessageStatus } from '@/types/message.types'
 
 const rank: Record<MessageStatus, number> = {
+  queued: 0,
   failed: 0,
   sending: 0,
   sent: 1,

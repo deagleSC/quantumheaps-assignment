@@ -1,11 +1,15 @@
 import {
+  initialConnectionState,
   initialConversationState,
   initialMessageState,
+  initialOutboxState,
   initialTypingState,
   initialUiState,
   initialUserState,
+  useConnectionStore,
   useConversationStore,
   useMessageStore,
+  useOutboxStore,
   useTypingStore,
   useUiStore,
   useUserStore,
@@ -18,4 +22,6 @@ export function resetStores() {
   useMessageStore.setState(initialMessageState)
   useTypingStore.setState(initialTypingState)
   useUiStore.setState(initialUiState)
+  useConnectionStore.setState({ ...initialConnectionState, isBrowserOnline: true })
+  useOutboxStore.setState(initialOutboxState)
 }

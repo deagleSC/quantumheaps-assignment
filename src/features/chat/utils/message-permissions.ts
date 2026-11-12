@@ -11,6 +11,7 @@ export function getMessagePermissions(message: Message, isOwn: boolean) {
     canCopy: live && message.content.length > 0,
     canEdit: live && sent && isOwn,
     // Own sent messages, or discarding an own failed one.
-    canDelete: live && isOwn && (sent || message.status === 'failed'),
+    canDelete:
+      live && isOwn && (sent || message.status === 'failed' || message.status === 'queued'),
   }
 }

@@ -1,6 +1,14 @@
 import type { ConversationId, ISODateString, MessageId, UserId } from './common.types'
 
-export const MESSAGE_STATUSES = ['sending', 'sent', 'delivered', 'read', 'failed'] as const
+/** `queued`: written while offline, waiting in the outbox to be sent. */
+export const MESSAGE_STATUSES = [
+  'queued',
+  'sending',
+  'sent',
+  'delivered',
+  'read',
+  'failed',
+] as const
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number]
 
 export interface Reaction {

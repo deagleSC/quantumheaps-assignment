@@ -3,6 +3,7 @@ import type { ConversationId, MessageId, UserId } from '@/types/common.types'
 import type { Conversation, GroupConversation } from '@/types/conversation.types'
 import type { Message, MessagePage, SendMessageInput } from '@/types/message.types'
 import type { User } from '@/types/user.types'
+import { OFFLINE_MESSAGE } from '@/shared/lib/network'
 import { MockDb } from './mock-db'
 import {
   clearPersisted,
@@ -25,6 +26,12 @@ let db: MockDb | null = null
 let random: () => number = Math.random
 let ready: Promise<void> = Promise.resolve()
 let persister: Persister | null = null
+let offline = false
+
+/** Simulates losing the network: every request fails fast until switched back. */
+export function setMockNetworkOnline(online: boolean) {
+  offline = !online
+}
 
 /** Override latency/failure settings (tests use zero latency and no failures). */
 export function configureMockApi(overrides: Partial<MockApiConfig> & { random?: () => number }) {
@@ -41,6 +48,7 @@ export function resetMockApi(options?: ConstructorParameters<typeof MockDb>[0]) 
   db = new MockDb(options)
   config = { ...defaultMockApiConfig }
   random = Math.random
+  offline = false
 }
 
 /**
@@ -89,11 +97,17 @@ type Kind = 'read' | 'write'
  */
 async function request<T>(kind: Kind, label: string, run: (db: MockDb) => T): Promise<T> {
   await ready
+  if (offline) throw new MockApiError(OFFLINE_MESSAGE)
   const { min, max } = config.latency
   const delay = min + random() * Math.max(0, max - min)
   const failureRate = kind === 'read' ? config.readFailureRate : config.writeFailureRate
   return new Promise<T>((resolve, reject) => {
     setTimeout(() => {
+      // The connection may have dropped while the request was in flight.
+      if (offline) {
+        reject(new MockApiError(OFFLINE_MESSAGE))
+        return
+      }
       if (random() < failureRate) {
         reject(new MockApiError(`Network error while trying to ${label}`))
         return

@@ -29,6 +29,7 @@ export const conversationActions = {
       useMessageStore.getState().cacheMessages(inbox.lastMessages)
       conversations.setConversations(inbox.conversations)
       conversations.setStatus('success')
+      await messageActions.restoreOutbox()
     } catch (error) {
       const message = handleError(error)
       users.setStatus('error', message)

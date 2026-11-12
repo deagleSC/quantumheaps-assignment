@@ -1,8 +1,9 @@
-import { AlertCircle, Check, CheckCheck, Clock } from 'lucide-react'
+import { AlertCircle, Check, CheckCheck, Clock, CloudOff } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { MessageStatus } from '@/types/message.types'
 
 const CONFIG: Record<MessageStatus, { Icon: typeof Check; label: string; className?: string }> = {
+  queued: { Icon: CloudOff, label: 'Queued: sends when you are back online' },
   sending: { Icon: Clock, label: 'Sending' },
   sent: { Icon: Check, label: 'Sent' },
   delivered: { Icon: CheckCheck, label: 'Delivered' },

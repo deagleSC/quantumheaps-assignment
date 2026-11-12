@@ -1,13 +1,16 @@
 import { nanoid } from 'nanoid'
 import { handleError } from '@/shared/lib/handle-error'
+import { isOfflineError } from '@/shared/lib/network'
 import { notify } from '@/shared/lib/notify'
 import { toggleReaction } from '@/shared/lib/reactions'
 import type { ConversationId, MessageId } from '@/types/common.types'
 import type { Message, SendMessageInput } from '@/types/message.types'
 import { MESSAGE_PAGE_SIZE, messageServices } from '../services/message-services'
 import { realtimeServices } from '../services/realtime-services'
+import { selectIsOnline, useConnectionStore } from '../stores/connection-store'
 import { useConversationStore } from '../stores/conversation-store'
 import { useMessageStore } from '../stores/message-store'
+import { useOutboxStore } from '../stores/outbox-store'
 import { useUiStore } from '../stores/ui-store'
 import { useUserStore } from '../stores/user-store'
 
@@ -23,8 +26,21 @@ function requireCurrentUserId() {
   return id
 }
 
-/** Sends an optimistic message to the server and reconciles the result. */
-async function deliver(temp: Message): Promise<void> {
+const isOnline = () => selectIsOnline(useConnectionStore.getState())
+
+/** Puts a message in the offline outbox (persisted) and marks it queued. */
+function queue(message: Message) {
+  useMessageStore.getState().patchMessage(message.id, { status: 'queued' })
+  useOutboxStore.getState().enqueue({ ...message, status: 'queued' })
+}
+
+type DeliveryResult = 'sent' | 'queued' | 'failed'
+
+/**
+ * Sends an optimistic message to the server and reconciles the result.
+ * Losing the network mid-send queues it instead of failing it.
+ */
+async function deliver(temp: Message): Promise<DeliveryResult> {
   const messages = useMessageStore.getState()
   try {
     const saved = await messageServices.send({
@@ -38,12 +54,30 @@ async function deliver(temp: Message): Promise<void> {
     useConversationStore
       .getState()
       .touchConversation(saved.conversationId, saved.id, saved.createdAt)
+    useOutboxStore.getState().dequeue(temp.id)
     realtimeServices.notifyOutgoing(saved)
+    return 'sent'
   } catch (error) {
+    if (isOfflineError(error) || !isOnline()) {
+      queue(temp)
+      return 'queued'
+    }
+    useOutboxStore.getState().dequeue(temp.id)
     messages.patchMessage(temp.id, { status: 'failed' })
     notify.error(handleError(error, 'Message failed to send'))
+    return 'failed'
   }
 }
+
+/** Queued messages of a conversation, restored after its history loads. */
+function mergeQueued(conversationId: ConversationId) {
+  const messages = useMessageStore.getState()
+  for (const m of useOutboxStore.getState().queue) {
+    if (m.conversationId === conversationId) messages.upsertMessage(messages.byId[m.id] ?? m)
+  }
+}
+
+let flushing: Promise<void> | null = null
 
 export const messageActions = {
   /** First page of a conversation's history. */
@@ -53,6 +87,7 @@ export const messageActions = {
     try {
       const page = await messageServices.getPage(conversationId)
       messages.addPage(conversationId, page)
+      mergeQueued(conversationId)
       messages.setHistoryStatus(conversationId, 'success')
     } catch (error) {
       messages.setHistoryStatus(conversationId, 'error', handleError(error))
@@ -86,7 +121,43 @@ export const messageActions = {
     }
   },
 
-  /** Optimistic send: the message shows immediately with status `sending`. */
+  /**
+   * Sends everything in the offline outbox, oldest first, one at a time.
+   * Stops (leaving the rest queued) if the network drops again.
+   */
+  flushOutbox: (): Promise<void> => {
+    if (flushing) return flushing
+    const run = async () => {
+      for (const queued of [...useOutboxStore.getState().queue]) {
+        if (!isOnline()) return
+        const messages = useMessageStore.getState()
+        if (!messages.byId[queued.id]) messages.upsertMessage(queued)
+        messages.patchMessage(queued.id, { status: 'sending' })
+        const result = await deliver({ ...queued, status: 'sending' })
+        if (result === 'queued') return
+      }
+    }
+    // Clear the in-flight marker in `.finally` (always asynchronous). Clearing
+    // it inside `run` would happen *before* the assignment when the outbox is
+    // empty, leaving a settled promise behind that blocks every later flush.
+    const current: Promise<void> = run().finally(() => {
+      if (flushing === current) flushing = null
+    })
+    flushing = current
+    return current
+  },
+
+  /** On start-up: show queued messages again (sidebar + open chats), then try sending. */
+  restoreOutbox: async (): Promise<void> => {
+    const queue = useOutboxStore.getState().queue
+    for (const m of queue) {
+      useMessageStore.getState().upsertMessage(m)
+      useConversationStore.getState().touchConversation(m.conversationId, m.id, m.createdAt)
+    }
+    if (queue.length > 0 && isOnline()) await messageActions.flushOutbox()
+  },
+
+  /** Optimistic send: the message shows immediately (queued when offline). */
   send: async (input: NewMessage): Promise<MessageId | null> => {
     const content = input.content.trim()
     if (!content && !input.attachment) return null
@@ -105,7 +176,8 @@ export const messageActions = {
     useMessageStore.getState().upsertMessage(temp)
     useConversationStore.getState().touchConversation(temp.conversationId, temp.id, temp.createdAt)
     useUiStore.getState().setReplyingTo(null)
-    await deliver(temp)
+    if (!isOnline()) queue(temp)
+    else await deliver(temp)
     return temp.id
   },
 
@@ -145,7 +217,11 @@ export const messageActions = {
     if (ui.replyingToId === id) ui.setReplyingTo(null)
     if (ui.editingId === id) ui.setEditing(null)
     if (isTempId(id)) {
-      if (message.status === 'failed') messages.removeMessage(id)
+      // Never reached the server: discard locally (and from the outbox).
+      if (message.status === 'failed' || message.status === 'queued') {
+        messages.removeMessage(id)
+        useOutboxStore.getState().dequeue(id)
+      }
       return
     }
     const previous = {

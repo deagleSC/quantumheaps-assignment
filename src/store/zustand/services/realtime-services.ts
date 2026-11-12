@@ -29,6 +29,12 @@ export const realtimeServices = {
     }
   },
 
+  /** Stops (offline) or restarts (online) live events while subscribed. */
+  setPaused: (paused: boolean): void => {
+    if (paused) realtimeSimulator.stop()
+    else if (realtimeSimulator.listenerCount() > 0) realtimeSimulator.start()
+  },
+
   /** Tells the server about a message it accepted, so status and replies follow. */
   notifyOutgoing: (message: Message): void => {
     realtimeSimulator.handleOutgoingMessage(message)

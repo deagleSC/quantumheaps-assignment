@@ -20,7 +20,7 @@ export function AppLayout({ sidebarActions }: { sidebarActions?: ReactNode }) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="flex min-h-0 flex-1 overflow-hidden">
       <header className="sr-only">
         <h1>Quantum Chat</h1>
       </header>

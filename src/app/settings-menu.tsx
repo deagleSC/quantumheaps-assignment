@@ -1,4 +1,4 @@
-import { Keyboard, RotateCcw, Settings } from 'lucide-react'
+import { CloudOff, Keyboard, RotateCcw, Settings } from 'lucide-react'
 import { useState } from 'react'
 import {
   AlertDialog,
@@ -13,18 +13,20 @@ import {
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
-import { appActions, useUiStore } from '@/store'
+import { appActions, connectionActions, useConnectionStore, useUiStore } from '@/store'
 
 /** Sidebar settings: shortcuts help and demo controls. */
 export function SettingsMenu() {
   const setShortcutsOpen = useUiStore((s) => s.setShortcutsOpen)
   const [confirmReset, setConfirmReset] = useState(false)
+  const simulatedOffline = useConnectionStore((s) => s.isSimulatedOffline)
 
   return (
     <>
@@ -42,6 +44,12 @@ export function SettingsMenu() {
           <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
             Demo
           </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={simulatedOffline}
+            onCheckedChange={(checked) => connectionActions.setSimulatedOffline(checked === true)}
+          >
+            <CloudOff /> Simulate offline
+          </DropdownMenuCheckboxItem>
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirmReset(true)}>
             <RotateCcw /> Reset demo data…
           </DropdownMenuItem>
