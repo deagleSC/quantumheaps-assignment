@@ -14,6 +14,9 @@ describe('getInitials', () => {
     ['grace', 'G'],
     ['  Alan  Mathison   Turing ', 'AT'],
     ['', '?'],
+    ['Load test (10k)', 'LT'],
+    ['(Team) 42', 'T'],
+    ['élodie Dupont', 'ÉD'],
   ])('%j → %s', (name, expected) => {
     expect(getInitials(name)).toBe(expected)
   })

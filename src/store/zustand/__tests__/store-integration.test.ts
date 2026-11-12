@@ -38,7 +38,7 @@ it('loads the inbox, opens a chat and runs the full send → read → reply cycl
   const inbox = conversationActions.loadInbox()
   await vi.advanceTimersByTimeAsync(50)
   await inbox
-  expect(useConversationStore.getState().order).toHaveLength(10)
+  expect(useConversationStore.getState().order).toHaveLength(11)
 
   const open = conversationActions.open('c-daniel')
   await vi.advanceTimersByTimeAsync(50)

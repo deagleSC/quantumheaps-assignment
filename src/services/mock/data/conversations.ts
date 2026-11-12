@@ -8,6 +8,8 @@ interface BaseSeed {
   unread: number
   /** How many days back the history goes. */
   days: number
+  /** History ends this many days before now (default 0). */
+  endDaysAgo?: number
 }
 
 export interface DirectSeed extends BaseSeed {
@@ -81,5 +83,18 @@ export const seedConversations: ConversationSeed[] = [
     messageCount: 120,
     unread: 12,
     days: 14,
+  },
+  {
+    // Stress test for the virtualised list and infinite scroll.
+    id: 'g-loadtest',
+    type: 'group',
+    name: 'Load test (10k)',
+    description: '10,000 messages to exercise virtualisation and history paging.',
+    memberIds: ['u-noah', 'u-mei', 'u-daniel', 'u-omar'],
+    adminIds: ['u-noah'],
+    messageCount: 10_000,
+    unread: 0,
+    days: 120,
+    endDaysAgo: 4,
   },
 ]

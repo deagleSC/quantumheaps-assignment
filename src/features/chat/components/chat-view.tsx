@@ -3,6 +3,7 @@ import { Button } from '@/shared/components/ui/button'
 import { useUiStore } from '@/store'
 import type { ConversationId } from '@/types/common.types'
 import { ChatHeader } from './chat-header'
+import { ChatMenu } from './chat-menu'
 import { MessageComposer } from './message-composer'
 import { MessageList } from './message-list'
 import { MessageSearchBar } from './message-search-bar'
@@ -38,6 +39,7 @@ export function ChatView({ conversationId }: { conversationId: ConversationId })
             >
               <Info />
             </Button>
+            <ChatMenu conversationId={conversationId} />
           </>
         }
       />

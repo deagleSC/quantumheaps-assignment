@@ -179,9 +179,31 @@ describe('history', () => {
     })
     await Promise.all([messageActions.loadOlder('c1'), messageActions.loadOlder('c1')])
     expect(services.getPage).toHaveBeenCalledOnce()
-    expect(services.getPage).toHaveBeenCalledWith('c1', 'm1')
+    expect(services.getPage).toHaveBeenCalledWith('c1', 'm1', 30)
     expect(timeline()).toMatchObject({ ids: ['m0', 'm1'], hasMore: false })
     await messageActions.loadOlder('c1')
+    expect(services.getPage).toHaveBeenCalledOnce()
+  })
+})
+
+describe('loadAll', () => {
+  it('pages through the whole history in large chunks until done', async () => {
+    services.getPage
+      .mockResolvedValueOnce({ messages: [message('m0', { createdAt: at(0) })], hasMore: true })
+      .mockResolvedValueOnce({
+        messages: [message('m-1', { createdAt: '2026-11-12T09:00:00.000Z' })],
+        hasMore: false,
+      })
+    await messageActions.loadAll('c1')
+    expect(services.getPage).toHaveBeenCalledTimes(2)
+    expect(services.getPage).toHaveBeenNthCalledWith(1, 'c1', 'm1', 2000)
+    expect(services.getPage).toHaveBeenNthCalledWith(2, 'c1', 'm0', 2000)
+    expect(timeline()).toMatchObject({ ids: ['m-1', 'm0', 'm1'], hasMore: false })
+  })
+
+  it('stops on error instead of looping', async () => {
+    services.getPage.mockRejectedValue(new Error('offline'))
+    await messageActions.loadAll('c1')
     expect(services.getPage).toHaveBeenCalledOnce()
   })
 })

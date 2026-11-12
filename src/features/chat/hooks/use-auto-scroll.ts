@@ -15,6 +15,11 @@ export interface UseAutoScrollOptions {
   lastMessageIsOwn: boolean
   /** Changes when content at the bottom grows (e.g. typing indicator). */
   bottomContentKey?: unknown
+  /**
+   * Custom first positioning (the virtualised list scrolls by index, since the
+   * unread divider may not be rendered). Return true if it handled it.
+   */
+  initialScroll?: () => boolean
 }
 
 /**
@@ -28,6 +33,7 @@ export function useAutoScroll({
   lastMessageId,
   lastMessageIsOwn,
   bottomContentKey,
+  initialScroll,
 }: UseAutoScrollOptions) {
   const containerRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
@@ -71,7 +77,10 @@ export function useAutoScroll({
       initialised.current = true
       prevLastId.current = lastMessageId
       const divider = el.querySelector<HTMLElement>('[data-unread-divider]')
-      if (divider) {
+      if (initialScroll?.()) {
+        atBottomRef.current = distanceFromBottom(el) <= NEAR_BOTTOM_PX
+        setIsAtBottom(atBottomRef.current)
+      } else if (divider) {
         divider.scrollIntoView({ block: 'center' })
         atBottomRef.current = distanceFromBottom(el) <= NEAR_BOTTOM_PX
         setIsAtBottom(atBottomRef.current)
@@ -84,6 +93,8 @@ export function useAutoScroll({
     prevLastId.current = lastMessageId
     if (lastMessageIsOwn || atBottomRef.current) scrollToBottom()
     else setNewCount((n) => n + 1)
+    // initialScroll is only read on the first run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, lastMessageId, lastMessageIsOwn, scrollToBottom])
 
   // If the viewport shrinks (composer grows, keyboard opens) stay pinned to the bottom.
@@ -103,5 +114,11 @@ export function useAutoScroll({
     if (el && initialised.current && atBottomRef.current) el.scrollTop = el.scrollHeight
   }, [bottomContentKey])
 
-  return { containerRef, isAtBottom, newCount, scrollToBottom }
+  /** Re-pin after content above the fold changes size (virtual row measurement). */
+  const pinIfAtBottom = useCallback(() => {
+    const el = containerRef.current
+    if (el && initialised.current && atBottomRef.current) el.scrollTop = el.scrollHeight
+  }, [])
+
+  return { containerRef, isAtBottom, newCount, scrollToBottom, pinIfAtBottom }
 }

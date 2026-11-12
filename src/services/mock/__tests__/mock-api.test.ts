@@ -19,7 +19,7 @@ describe('mockApi', () => {
     await vi.advanceTimersByTimeAsync(299)
     expect(done).toBe(false)
     await vi.advanceTimersByTimeAsync(1)
-    expect(await promise).toHaveLength(10)
+    expect(await promise).toHaveLength(11)
   })
 
   it('injects failures without changing data', async () => {

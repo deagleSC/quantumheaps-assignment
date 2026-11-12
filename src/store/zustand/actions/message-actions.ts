@@ -4,7 +4,7 @@ import { notify } from '@/shared/lib/notify'
 import { toggleReaction } from '@/shared/lib/reactions'
 import type { ConversationId, MessageId } from '@/types/common.types'
 import type { Message, SendMessageInput } from '@/types/message.types'
-import { messageServices } from '../services/message-services'
+import { MESSAGE_PAGE_SIZE, messageServices } from '../services/message-services'
 import { realtimeServices } from '../services/realtime-services'
 import { useConversationStore } from '../stores/conversation-store'
 import { useMessageStore } from '../stores/message-store'
@@ -14,6 +14,7 @@ import { useUserStore } from '../stores/user-store'
 export type NewMessage = Omit<SendMessageInput, 'clientId'>
 
 const TEMP_PREFIX = 'tmp-'
+const LOAD_ALL_PAGE_SIZE = 2000
 export const isTempId = (id: MessageId) => id.startsWith(TEMP_PREFIX)
 
 function requireCurrentUserId() {
@@ -59,7 +60,7 @@ export const messageActions = {
   },
 
   /** Next older page (infinite scroll). No-op while loading or when done. */
-  loadOlder: async (conversationId: ConversationId): Promise<void> => {
+  loadOlder: async (conversationId: ConversationId, limit = MESSAGE_PAGE_SIZE): Promise<void> => {
     const messages = useMessageStore.getState()
     const timeline = messages.byConversation[conversationId]
     if (!timeline?.hasMore || timeline.olderStatus === 'loading') return
@@ -67,12 +68,21 @@ export const messageActions = {
     if (!oldest) return
     messages.setOlderStatus(conversationId, 'loading')
     try {
-      const page = await messageServices.getPage(conversationId, oldest)
+      const page = await messageServices.getPage(conversationId, oldest, limit)
       messages.addPage(conversationId, page)
       messages.setOlderStatus(conversationId, 'success')
     } catch (error) {
       messages.setOlderStatus(conversationId, 'error')
       notify.error(handleError(error))
+    }
+  },
+
+  /** Pages through the whole history in large chunks (the "Load all" button). */
+  loadAll: async (conversationId: ConversationId): Promise<void> => {
+    for (let guard = 0; guard < 1000; guard++) {
+      const timeline = useMessageStore.getState().byConversation[conversationId]
+      if (!timeline?.hasMore || timeline.olderStatus === 'error') return
+      await messageActions.loadOlder(conversationId, LOAD_ALL_PAGE_SIZE)
     }
   },
 

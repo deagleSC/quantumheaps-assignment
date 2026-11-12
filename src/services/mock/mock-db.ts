@@ -61,7 +61,7 @@ export class MockDb {
         participantIds,
         unread: seedConv.unread,
         days: seedConv.days,
-        now,
+        now: now - (seedConv.endDaysAgo ?? 0) * 24 * 60 * 60_000,
         rng,
       })
       const last = messages[messages.length - 1]

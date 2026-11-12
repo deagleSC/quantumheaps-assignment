@@ -8,11 +8,11 @@ beforeEach(() => {
 })
 
 describe('MockDb seed', () => {
-  it('has users, direct chats and 3 groups', () => {
+  it('has users, direct chats and 4 groups', () => {
     expect(db.getUsers()).toHaveLength(11)
     const convs = db.getConversations()
-    expect(convs).toHaveLength(10)
-    expect(convs.filter((c) => c.type === 'group')).toHaveLength(3)
+    expect(convs).toHaveLength(11)
+    expect(convs.filter((c) => c.type === 'group')).toHaveLength(4)
   })
 
   it('sorts conversations newest first and links the last message', () => {
