@@ -24,7 +24,7 @@ export function useApplyTheme(): ResolvedTheme {
     root.style.colorScheme = resolved
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', resolved === 'dark' ? '#18181b' : '#ffffff')
+      ?.setAttribute('content', resolved === 'dark' ? '#111b21' : '#f0f2f5')
   }, [resolved])
   return resolved
 }

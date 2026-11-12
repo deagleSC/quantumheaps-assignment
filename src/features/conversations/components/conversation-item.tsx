@@ -62,7 +62,7 @@ export const ConversationItem = memo(function ConversationItem({
       aria-current={isActive ? 'true' : undefined}
       className={cn(
         'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
-        'hover:bg-accent focus-visible:ring-ring/50 outline-none focus-visible:ring-2',
+        'hover:bg-foreground/5 focus-visible:ring-ring/50 outline-none focus-visible:ring-2',
         isActive && 'bg-primary/10 hover:bg-primary/15',
       )}
     >

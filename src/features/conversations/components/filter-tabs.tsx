@@ -40,7 +40,7 @@ export function FilterTabs({ header, children, className }: FilterTabsProps) {
         {header}
         <TabsList className="w-full" aria-label="Filter chats">
           {FILTERS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="gap-1.5">
+            <TabsTrigger key={value} value={value} className="text-muted-foreground gap-1.5">
               {label}
               {value === 'unread' && unreadChats > 0 && (
                 <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4 font-semibold">

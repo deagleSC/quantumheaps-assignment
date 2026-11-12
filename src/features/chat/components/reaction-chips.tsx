@@ -38,7 +38,7 @@ function Chip({
           aria-label={`${reaction.emoji} ${count}: ${names}`}
           className={cn(
             'bg-background flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs shadow-sm transition-colors',
-            'hover:bg-accent disabled:pointer-events-none',
+            'hover:bg-foreground/5 disabled:pointer-events-none',
             mine && 'border-primary/50 bg-primary/10',
           )}
         >

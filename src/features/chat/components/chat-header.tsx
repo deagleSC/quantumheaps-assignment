@@ -75,7 +75,7 @@ export function ChatHeader({ conversationId, actions }: ChatHeaderProps) {
         type="button"
         onClick={() => setInfoPanelOpen(true)}
         aria-label={`Show ${conversation.type === 'group' ? 'group' : 'contact'} info`}
-        className="hover:bg-accent/60 -mx-1 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left"
+        className="hover:bg-foreground/5 -mx-1 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left"
       >
         <OnlineAvatar name={title} src={avatarUrl} isOnline={isOnline} />
         <div className="min-w-0 flex-1">

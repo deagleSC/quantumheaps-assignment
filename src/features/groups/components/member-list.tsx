@@ -51,7 +51,7 @@ export function MemberList({ group }: { group: GroupConversation }) {
         {members.map(({ user, isAdmin, isYou }) => (
           <li
             key={user.id}
-            className="group/member hover:bg-accent flex items-center gap-3 rounded-lg px-2 py-2"
+            className="group/member hover:bg-foreground/5 flex items-center gap-3 rounded-lg px-2 py-2"
           >
             <OnlineAvatar
               name={user.name}
