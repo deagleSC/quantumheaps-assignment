@@ -36,3 +36,19 @@ export interface Message {
   /** Temporary client ID for optimistic sends, kept until the server confirms. */
   clientId?: string
 }
+
+/** Payload for sending a message. `clientId` ties the server copy to the optimistic one. */
+export interface SendMessageInput {
+  conversationId: ConversationId
+  content: string
+  clientId: string
+  replyToId?: MessageId
+  attachment?: Attachment
+}
+
+/** One page of history, newest page first when paginating backwards. */
+export interface MessagePage {
+  messages: Message[]
+  /** True when older messages exist before this page. */
+  hasMore: boolean
+}
