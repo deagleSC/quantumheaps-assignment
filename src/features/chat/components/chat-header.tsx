@@ -61,7 +61,7 @@ export function ChatHeader({ conversationId, actions }: ChatHeaderProps) {
   }
 
   return (
-    <header className="bg-background/95 flex h-16 shrink-0 items-center gap-3 border-b px-3 backdrop-blur md:px-4">
+    <header className="bg-background/95 flex h-16 shrink-0 items-center gap-1.5 border-b px-2 backdrop-blur sm:gap-3 md:px-4">
       <Button
         variant="ghost"
         size="icon"

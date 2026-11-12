@@ -82,12 +82,12 @@ export const MessageBubble = memo(function MessageBubble({
             openMenu()
           }}
           className={cn(
-            'relative rounded-2xl px-3 py-1.5 text-[15px] leading-snug shadow-sm',
+            'relative rounded-[10px] px-2.5 py-1.5 text-[15px] leading-snug shadow-(--bubble-shadow)',
             '[@media(hover:none)]:select-none',
             isOwn
               ? 'bg-bubble-out text-bubble-out-foreground'
               : 'bg-bubble-in text-bubble-in-foreground',
-            isLastInCluster && (isOwn ? 'rounded-br-md' : 'rounded-bl-md'),
+            isLastInCluster && (isOwn ? 'rounded-br-[3px]' : 'rounded-bl-[3px]'),
             message.status === 'failed' && 'opacity-80',
             isActiveMatch && 'ring-offset-chat-bg ring-2 ring-amber-400 ring-offset-2',
           )}

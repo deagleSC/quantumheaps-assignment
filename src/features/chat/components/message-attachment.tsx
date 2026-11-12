@@ -22,7 +22,7 @@ export function MessageAttachment({
           type="button"
           onClick={() => setOpen(true)}
           aria-label={`Open image ${attachment.name}`}
-          className="-mx-1.5 mt-0.5 mb-1 block overflow-hidden rounded-xl"
+          className="-mx-1.5 mt-0.5 mb-1 block overflow-hidden rounded-[7px]"
         >
           <img
             src={attachment.previewUrl}

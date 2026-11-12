@@ -30,7 +30,7 @@ export function ReplyQuote({ messageId, isOwnBubble }: ReplyQuoteProps) {
       type="button"
       onClick={() => jumpToMessage(messageId)}
       className={cn(
-        'mb-1 block w-full rounded-md border-l-4 px-2 py-1 text-left text-xs',
+        'mb-1 block w-full rounded-[6px] border-l-4 px-2 py-1 text-left text-xs',
         isOwnBubble ? 'border-bubble-out-foreground/60 bg-black/10' : 'border-primary bg-primary/5',
       )}
     >

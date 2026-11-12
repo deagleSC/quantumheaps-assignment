@@ -127,82 +127,84 @@ export function MessageComposer({ conversationId, attachment: shared }: MessageC
 
   return (
     <div className="bg-background shrink-0 border-t">
-      {editingId ? <EditPreview /> : <ReplyPreview />}
-      {!editingId && attachment.pending && (
-        <AttachmentPreview attachment={attachment.pending} onRemove={attachment.clear} />
-      )}
-      <form onSubmit={submit} className="p-3" aria-label="Send a message">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="sr-only"
-          tabIndex={-1}
-          aria-label="Attach a file"
-          onChange={(e) => {
-            attachment.select(e.target.files?.[0])
-            e.target.value = '' // allow picking the same file again
-            textareaRef.current?.focus()
-          }}
-        />
-        <InputGroup className="bg-muted/40 rounded-2xl">
-          {!editingId && (
-            <InputGroupAddon align="inline-start" className="self-end pb-2">
-              <InputGroupButton
-                size="icon-sm"
-                aria-label="Attach a file"
-                className="rounded-full"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip />
-              </InputGroupButton>
-            </InputGroupAddon>
-          )}
-          <InputGroupTextarea
-            {...field}
-            ref={(el) => {
-              registerRef(el)
-              textareaRef.current = el
-            }}
-            rows={1}
-            maxLength={MAX_MESSAGE_LENGTH}
-            placeholder={editingId ? 'Edit message' : 'Type a message'}
-            aria-label="Message"
-            className="[field-sizing:content] max-h-40 min-h-11 py-3 text-[15px]"
-            onKeyDown={onKeyDown}
-            onPaste={(e) => {
-              const file = e.clipboardData.files[0]
-              if (file && !editingId) {
-                e.preventDefault()
-                attachment.select(file)
-              }
+      <div className="mx-auto w-full max-w-4xl">
+        {editingId ? <EditPreview /> : <ReplyPreview />}
+        {!editingId && attachment.pending && (
+          <AttachmentPreview attachment={attachment.pending} onRemove={attachment.clear} />
+        )}
+        <form onSubmit={submit} className="p-3" aria-label="Send a message">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Attach a file"
+            onChange={(e) => {
+              attachment.select(e.target.files?.[0])
+              e.target.value = '' // allow picking the same file again
+              textareaRef.current?.focus()
             }}
           />
-          <InputGroupAddon align="inline-end" className="self-end pb-2">
-            <InputGroupButton
-              type="submit"
-              size="icon-sm"
-              variant="default"
-              disabled={!canSubmit}
-              aria-label={editingId ? 'Save edit' : 'Send message'}
-              className="rounded-full"
-            >
-              {editingId ? <Check /> : <SendHorizontal />}
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-        <p className="text-muted-foreground mt-1.5 hidden px-1 text-[11px] md:block">
-          {editingId ? (
-            <>
-              <Kbd>Enter</Kbd> to save · <Kbd>Esc</Kbd> to cancel
-            </>
-          ) : (
-            <>
-              <Kbd>Enter</Kbd> to send · <Kbd>Shift</Kbd> + <Kbd>Enter</Kbd> for a new line ·{' '}
-              <Kbd>↑</Kbd> to edit your last message
-            </>
-          )}
-        </p>
-      </form>
+          <InputGroup className="bg-card has-[[data-slot=input-group-control]:focus-visible]:border-primary/50 has-[[data-slot=input-group-control]:focus-visible]:ring-primary/15 rounded-2xl has-[[data-slot=input-group-control]:focus-visible]:ring-2">
+            {!editingId && (
+              <InputGroupAddon align="inline-start" className="self-end pb-2">
+                <InputGroupButton
+                  size="icon-sm"
+                  aria-label="Attach a file"
+                  className="rounded-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip />
+                </InputGroupButton>
+              </InputGroupAddon>
+            )}
+            <InputGroupTextarea
+              {...field}
+              ref={(el) => {
+                registerRef(el)
+                textareaRef.current = el
+              }}
+              rows={1}
+              maxLength={MAX_MESSAGE_LENGTH}
+              placeholder={editingId ? 'Edit message' : 'Type a message'}
+              aria-label="Message"
+              className="[field-sizing:content] max-h-40 min-h-11 py-3 text-[15px]"
+              onKeyDown={onKeyDown}
+              onPaste={(e) => {
+                const file = e.clipboardData.files[0]
+                if (file && !editingId) {
+                  e.preventDefault()
+                  attachment.select(file)
+                }
+              }}
+            />
+            <InputGroupAddon align="inline-end" className="self-end pb-2">
+              <InputGroupButton
+                type="submit"
+                size="icon-sm"
+                variant="default"
+                disabled={!canSubmit}
+                aria-label={editingId ? 'Save edit' : 'Send message'}
+                className="rounded-full"
+              >
+                {editingId ? <Check /> : <SendHorizontal />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          <p className="text-muted-foreground mt-1.5 hidden px-1 text-[11px] md:block">
+            {editingId ? (
+              <>
+                <Kbd>Enter</Kbd> to save · <Kbd>Esc</Kbd> to cancel
+              </>
+            ) : (
+              <>
+                <Kbd>Enter</Kbd> to send · <Kbd>Shift</Kbd> + <Kbd>Enter</Kbd> for a new line ·{' '}
+                <Kbd>↑</Kbd> to edit your last message
+              </>
+            )}
+          </p>
+        </form>
+      </div>
     </div>
   )
 }

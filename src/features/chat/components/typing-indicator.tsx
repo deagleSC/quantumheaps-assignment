@@ -3,7 +3,7 @@ export function TypingIndicator({ label }: { label: string }) {
   return (
     <div className="flex items-end gap-2 px-4 pt-1 pb-2" aria-live="polite">
       <div
-        className="bg-bubble-in flex h-9 items-center gap-1 rounded-2xl rounded-bl-md px-3.5 shadow-sm"
+        className="bg-bubble-in flex h-9 items-center gap-1 rounded-[10px] rounded-bl-[3px] px-3.5 shadow-(--bubble-shadow)"
         aria-hidden
       >
         {[0, 150, 300].map((delay) => (

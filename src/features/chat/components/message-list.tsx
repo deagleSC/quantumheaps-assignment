@@ -45,7 +45,7 @@ function MessageListSkeleton() {
     <div aria-busy="true" aria-label="Loading messages" className="space-y-3 p-4">
       {[48, 64, 36, 56, 44, 60].map((w, i) => (
         <div key={i} className={cn('flex', i % 2 ? 'justify-end' : 'justify-start')}>
-          <Skeleton className="h-10 rounded-2xl" style={{ width: `${w}%` }} />
+          <Skeleton className="h-10 rounded-[10px]" style={{ width: `${w}%` }} />
         </div>
       ))}
     </div>
@@ -56,7 +56,7 @@ function DatePill({ label, floating }: { label: string; floating?: boolean }) {
   return (
     <span
       className={cn(
-        'bg-background/90 text-muted-foreground rounded-full border px-3 py-0.5 text-xs font-medium shadow-sm backdrop-blur',
+        'bg-card/95 text-muted-foreground rounded-lg px-3 py-1 text-xs font-medium shadow-(--bubble-shadow) backdrop-blur',
         floating && 'pointer-events-none',
       )}
     >
@@ -234,7 +234,7 @@ export function MessageList({ conversationId }: { conversationId: ConversationId
     )
   } else if (isVirtual) {
     body = (
-      <div className="py-2">
+      <div className="mx-auto w-full max-w-4xl py-2">
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualItems.map((item) => (
             <div
@@ -254,7 +254,7 @@ export function MessageList({ conversationId }: { conversationId: ConversationId
   } else {
     const [history, ...messageRows] = rows
     body = (
-      <div className="flex min-h-full flex-col justify-end py-2">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end py-2">
         {history && renderRow(history)}
         {groupIntoSections(messageRows as MessageRow[]).map((section) => (
           // One section per day, so each sticky date label only sticks within its day.

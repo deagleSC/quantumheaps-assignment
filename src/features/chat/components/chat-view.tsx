@@ -53,7 +53,7 @@ export function ChatView({ conversationId }: { conversationId: ConversationId })
       <ChatHeader
         conversationId={conversationId}
         actions={
-          <>
+          <div className="flex shrink-0 items-center">
             <Button
               variant={isSearchOpen ? 'secondary' : 'ghost'}
               size="icon"
@@ -73,7 +73,7 @@ export function ChatView({ conversationId }: { conversationId: ConversationId })
               <Info />
             </Button>
             <ChatMenu conversationId={conversationId} />
-          </>
+          </div>
         }
       />
       {isSearchOpen && <MessageSearchBar conversationId={conversationId} />}
