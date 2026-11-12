@@ -50,5 +50,3 @@ export const replyPhrases = [
   'On it.',
   'Nice 🙌',
 ] as const
-
-export const reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const

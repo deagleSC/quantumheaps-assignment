@@ -1,6 +1,7 @@
 import type { ConversationId, ISODateString, UserId } from '@/types/common.types'
 import type { Message, Reaction } from '@/types/message.types'
-import { phrases, reactionEmojis } from './phrases'
+import { QUICK_REACTIONS } from '@/shared/lib/reactions'
+import { phrases } from './phrases'
 import { pick, randomInt, type Rng } from './random'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -87,7 +88,7 @@ export function generateMessages(opts: GenerateMessagesOptions): Message[] {
 function randomReactions(rng: Rng, participants: UserId[], sender: UserId): Reaction[] {
   const reactors = participants.filter((id) => id !== sender)
   if (reactors.length === 0) return []
-  const emoji = pick(rng, reactionEmojis)
+  const emoji = pick(rng, QUICK_REACTIONS)
   const userIds = reactors.filter(() => rng() < 0.5)
   return [{ emoji, userIds: userIds.length > 0 ? userIds : [pick(rng, reactors)] }]
 }

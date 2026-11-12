@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@/test/render'
 import userEvent from '@testing-library/user-event'
 import {
   messageActions,
@@ -87,7 +87,7 @@ describe('MessageBubble', () => {
         message={message('m3', { reactions: [{ emoji: '👍', userIds: ['u1', 'u2'] }] })}
       />,
     )
-    expect(screen.getByLabelText('👍 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '👍 2: Ada, Bob' })).toBeInTheDocument()
   })
 
   it('offers retry for failed messages', async () => {

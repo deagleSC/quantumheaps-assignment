@@ -23,8 +23,9 @@ export default tseslint.config(
     },
   },
   {
-    // Vendored shadcn/ui primitives export variants alongside components.
-    files: ['src/shared/components/ui/**'],
+    // Vendored shadcn/ui primitives export variants alongside components;
+    // test utilities are never hot-reloaded.
+    files: ['src/shared/components/ui/**', 'src/test/**', '**/__tests__/**'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
 )

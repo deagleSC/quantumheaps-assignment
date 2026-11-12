@@ -1,6 +1,9 @@
 import type { UserId } from '@/types/common.types'
 import type { Reaction } from '@/types/message.types'
 
+/** The quick-reaction set offered in the picker (also used by seed data). */
+export const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const
+
 /**
  * Adds `userId`'s `emoji` reaction, or removes it if already present.
  * Pure: returns new arrays, so it works for optimistic UI and the mock DB alike.

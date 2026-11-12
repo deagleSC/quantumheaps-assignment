@@ -1,13 +1,16 @@
 import { RotateCw } from 'lucide-react'
-import { memo } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { OnlineAvatar } from '@/shared/components/online-avatar'
 import { Button } from '@/shared/components/ui/button'
+import { useLongPress } from '@/shared/hooks/use-long-press'
 import { formatMessageTime } from '@/shared/lib/format-time'
 import { cn } from '@/shared/lib/utils'
 import { messageActions, useUserStore } from '@/store'
 import type { Message } from '@/types/message.types'
 import { senderColor } from '../utils/sender-color'
+import { MessageActions } from './message-actions'
 import { MessageStatusIcon } from './message-status-icon'
+import { ReactionChips } from './reaction-chips'
 import { ReplyQuote } from './reply-quote'
 
 export interface MessageBubbleProps {
@@ -28,6 +31,10 @@ export const MessageBubble = memo(function MessageBubble({
   isLastInCluster,
 }: MessageBubbleProps) {
   const sender = useUserStore((s) => (isGroup && !isOwn ? s.byId[message.senderId] : undefined))
+  const currentUserId = useUserStore((s) => s.currentUserId)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const openMenu = useCallback(() => setMenuOpen(true), [])
+  const longPress = useLongPress(openMenu)
 
   if (message.kind === 'system') {
     return (
@@ -46,7 +53,7 @@ export const MessageBubble = memo(function MessageBubble({
     <div
       data-message-id={message.id}
       className={cn(
-        'flex items-end gap-2 rounded-lg px-3 md:px-4',
+        'group/message flex items-end gap-2 rounded-lg px-3 md:px-4',
         isOwn ? 'justify-end' : 'justify-start',
         isFirstInCluster ? 'pt-2' : 'pt-0.5',
       )}
@@ -60,8 +67,15 @@ export const MessageBubble = memo(function MessageBubble({
       )}
       <div className={cn('flex max-w-[85%] flex-col sm:max-w-[70%]', isOwn && 'items-end')}>
         <div
+          {...(message.kind === 'text' && !message.isDeleted ? longPress : {})}
+          onContextMenu={(e) => {
+            if (message.isDeleted) return
+            e.preventDefault()
+            openMenu()
+          }}
           className={cn(
             'relative rounded-2xl px-3 py-1.5 text-[15px] leading-snug shadow-sm',
+            '[@media(hover:none)]:select-none',
             isOwn
               ? 'bg-bubble-out text-bubble-out-foreground'
               : 'bg-bubble-in text-bubble-in-foreground',
@@ -94,20 +108,12 @@ export const MessageBubble = memo(function MessageBubble({
           </span>
         </div>
 
-        {message.reactions.length > 0 && (
-          <div className={cn('-mt-1 flex flex-wrap gap-1', isOwn ? 'pr-2' : 'pl-2')}>
-            {message.reactions.map((r) => (
-              <span
-                key={r.emoji}
-                className="bg-background rounded-full border px-1.5 py-0.5 text-xs shadow-sm"
-                aria-label={`${r.emoji} ${r.userIds.length}`}
-              >
-                {r.emoji}
-                {r.userIds.length > 1 && <span className="ml-0.5">{r.userIds.length}</span>}
-              </span>
-            ))}
-          </div>
-        )}
+        <ReactionChips
+          reactions={message.reactions}
+          align={isOwn ? 'end' : 'start'}
+          disabled={message.isDeleted}
+          onToggle={(emoji) => void messageActions.toggleReaction(message.id, emoji)}
+        />
 
         {message.status === 'failed' && (
           <Button
@@ -120,6 +126,13 @@ export const MessageBubble = memo(function MessageBubble({
           </Button>
         )}
       </div>
+      <MessageActions
+        message={message}
+        isOwn={isOwn}
+        currentUserId={currentUserId}
+        menuOpen={menuOpen}
+        onMenuOpenChange={setMenuOpen}
+      />
     </div>
   )
 })
