@@ -11,10 +11,15 @@ export interface MockApiConfig {
   writeFailureRate: number
 }
 
+/**
+ * Random failures are off by default. Error and retry paths are covered by
+ * tests (which set these rates) and can be seen in the app via
+ * Settings → Simulate offline.
+ */
 export const defaultMockApiConfig: MockApiConfig = {
   latency: { min: 200, max: 600 },
-  readFailureRate: 0.03,
-  writeFailureRate: 0.05,
+  readFailureRate: 0,
+  writeFailureRate: 0,
 }
 
 export interface RealtimeSimulatorConfig {
