@@ -1,6 +1,6 @@
 # Quantum Chat
 
-A responsive chat app in the style of a simplified Slack or WhatsApp Web, built for the Quantum Heaps Senior Frontend Developer take-home. It covers every functional requirement in the brief (sections A–E) and all eight optional challenges, against a mock backend that runs entirely in the browser.
+A responsive chat app in the style of a simplified Slack or WhatsApp Web. It covers every functional requirement in the brief (sections A–E) and all eight optional challenges, against a mock backend that runs entirely in the browser.
 
 **Live demo:** https://quantumheaps-assignment.vercel.app
 
