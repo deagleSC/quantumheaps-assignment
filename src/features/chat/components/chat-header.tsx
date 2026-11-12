@@ -10,6 +10,7 @@ import {
   getTypingLabel,
   useConversationStore,
   useTypingStore,
+  useUiStore,
   useUserStore,
 } from '@/store'
 import type { ConversationId } from '@/types/common.types'
@@ -37,6 +38,7 @@ export function ChatHeader({ conversationId, actions }: ChatHeaderProps) {
     ),
   )
   const currentUserId = useUserStore((s) => s.currentUserId)
+  const setInfoPanelOpen = useUiStore((s) => s.setInfoPanelOpen)
 
   if (!conversation) return null
   const usersById = Object.fromEntries(Object.entries(users).filter(([, u]) => u)) as Record<
@@ -69,18 +71,25 @@ export function ChatHeader({ conversationId, actions }: ChatHeaderProps) {
       >
         <ArrowLeft />
       </Button>
-      <OnlineAvatar name={title} src={avatarUrl} isOnline={isOnline} />
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate leading-tight font-semibold">{title}</h2>
-        <p
-          aria-live="polite"
-          className={
-            typing ? 'text-primary truncate text-xs' : 'text-muted-foreground truncate text-xs'
-          }
-        >
-          {subtitle}
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={() => setInfoPanelOpen(true)}
+        aria-label={`Show ${conversation.type === 'group' ? 'group' : 'contact'} info`}
+        className="hover:bg-accent/60 -mx-1 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left"
+      >
+        <OnlineAvatar name={title} src={avatarUrl} isOnline={isOnline} />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate leading-tight font-semibold">{title}</h2>
+          <p
+            aria-live="polite"
+            className={
+              typing ? 'text-primary truncate text-xs' : 'text-muted-foreground truncate text-xs'
+            }
+          >
+            {subtitle}
+          </p>
+        </div>
+      </button>
       {actions}
     </header>
   )
