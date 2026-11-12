@@ -3,7 +3,7 @@ import type { ConversationId, ISODateString, MessageId, UserId } from '@/types/c
 import type { Message, MessageStatus } from '@/types/message.types'
 import { phrases, replyPhrases } from './data/phrases'
 import { pick, type Rng } from './data/random'
-import { getMockDb } from './mock-api'
+import { getMockDb, isLeaderTab, onLeadershipChange } from './mock-api'
 import type { MockDb } from './mock-db'
 import { TypedEmitter } from './typed-emitter'
 
@@ -33,6 +33,12 @@ export interface RealtimeSimulatorOptions {
   random?: Rng
   /** Where the simulator reads and writes data. Defaults to the mock API's DB. */
   getDb?: () => MockDb
+  /**
+   * Whether this instance may generate background activity (random incoming
+   * messages, presence). Defaults to "is this the leader tab", so several open
+   * tabs don't each invent their own chatter.
+   */
+  isLeader?: () => boolean
 }
 
 type Timer = ReturnType<typeof setTimeout>
@@ -57,11 +63,15 @@ export class RealtimeSimulator {
   private running = false
   /** Outgoing messages received while stopped; handled on the next start(). */
   private buffered: Message[] = []
+  private readonly isLeader: () => boolean
+  private backgroundOn = false
+  private offLeadership: (() => void) | null = null
 
   constructor(options: RealtimeSimulatorOptions = {}) {
     this.config = { ...defaultRealtimeConfig, ...options.config }
     this.random = options.random ?? Math.random
     this.getDb = options.getDb ?? getMockDb
+    this.isLeader = options.isLeader ?? (options.getDb ? () => true : isLeaderTab)
   }
 
   /** Adjusts timing or randomness (tests make the shared instance deterministic). */
@@ -82,13 +92,21 @@ export class RealtimeSimulator {
     return this.emitter.listenerCount(type)
   }
 
-  /** Starts the background activity (incoming messages, presence). Idempotent. */
+  /** Starts the connection; background activity runs only in the leader tab. Idempotent. */
   start(): void {
     if (this.running) return
     this.running = true
     const buffered = this.buffered
     this.buffered = []
     buffered.forEach((m) => this.handleOutgoingMessage(m))
+    this.startBackground()
+    // Become active if this tab becomes the leader later (the leader tab closed).
+    this.offLeadership = onLeadershipChange(() => this.startBackground())
+  }
+
+  private startBackground() {
+    if (!this.running || this.backgroundOn || !this.isLeader()) return
+    this.backgroundOn = true
     this.scheduleNextIncoming()
     this.intervals.add(setInterval(() => this.flipRandomPresence(), this.config.presenceIntervalMs))
   }
@@ -96,6 +114,9 @@ export class RealtimeSimulator {
   /** Clears every timer. Listeners stay attached so `start()` can resume. */
   stop(): void {
     this.running = false
+    this.backgroundOn = false
+    this.offLeadership?.()
+    this.offLeadership = null
     this.timers.forEach(clearTimeout)
     this.timers.clear()
     this.intervals.forEach(clearInterval)

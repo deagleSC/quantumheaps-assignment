@@ -29,7 +29,7 @@ npm run dev          # http://localhost:5173
 |---|---|
 | `npm run dev` | Dev server, using the in-memory realtime simulator |
 | `npm run dev:ws` | Optional WebSocket realtime server on `ws://localhost:8787`. Run it alongside `dev` and open the app with `?realtime=ws` |
-| `npm test` | All tests (292, in about 15 s) |
+| `npm test` | All tests (309, in about 15 s) |
 | `npm run test:coverage` | Tests plus a coverage report, with enforced thresholds |
 | `npm run typecheck` / `npm run lint` | TypeScript (app, Vite config and mock server) / ESLint |
 | `npm run build` / `npm run preview` | Production build (split vendor chunks) / serve it locally |
@@ -120,7 +120,7 @@ Each layer imports only the one below it. Import boundaries were checked with gr
 2. **Stores** (`store/zustand/stores`) hold state and plain synchronous setters, one store per domain. They contain no async code and never import actions or services.
 3. **Actions** (`store/zustand/actions`) hold all asynchronous logic and coordination. For example, `messageActions.send` updates both the message and conversation stores, puts the message in the outbox when offline, and reconciles with the server's copy. Actions read and write stores through `useXStore.getState()`.
 4. **Services** (`store/zustand/services`) call the mock API and rethrow every failure as `Error(handleError(e))`, so actions only ever see readable messages. Replacing the mock with a real HTTP client changes only this layer.
-5. **Mock backend** (`src/services`): a promise-based API with random latency and failure injection, a database that tracks which keys each write changes, and the realtime transports.
+5. **Mock backend** (`src/services`): a promise-based API with random latency and optional failure injection (off by default; the tests turn it on), a database that tracks which keys each write changes, and the realtime transports.
 
 ### Folder structure
 
@@ -170,6 +170,12 @@ mock-server/             # Node WebSocket server (npm run dev:ws)
 - **The mock backend** is saved to IndexedDB. The database reports the storage keys each write touches (`users`, `conversations`, or `messages:<id>`), so a presence change rewrites the user list, not the 10,000-message chat. Saves are batched to one per second and flushed when the page is hidden.
 - **UI preferences** (theme and filter) and the **offline outbox** use Zustand `persist` with LocalStorage.
 
+**Multiple tabs.** Every open tab stays in step, live.
+- Each write in the mock database is broadcast to other tabs (`BroadcastChannel`) as a record-level change (a message, conversation or user). Receiving tabs apply it and show it as a realtime event, so a message sent, an edit, a reaction or a chat being read in one tab appears in the others.
+- One tab (the holder of a Web Lock) saves to IndexedDB and generates the simulated background activity. When it closes, another tab takes over and saves its complete state. A newly opened tab asks the saving tab to save before it loads.
+- The offline outbox is shared, and only one tab sends it at a time. A queued message sent by another tab is matched to the local copy by its client id.
+- On load, saved data is checked and repaired if a conversation points at a missing message.
+
 ---
 
 ## Key decisions and trade-offs
@@ -179,7 +185,7 @@ mock-server/             # Node WebSocket server (npm run dev:ws)
 | Vite SPA rather than Next.js | Everything runs client-side; SSR would add complexity for no benefit | No SSR or SEO, which a chat app behind a login doesn't need |
 | shadcn/ui for primitives, custom chat components | Radix provides accessible menus, dialogs, focus trapping and Esc handling; the chat-specific parts (bubbles, list, composer) are built by hand | The vendored component files need upkeep (they live in `shared/components/ui`) |
 | Virtualise only above 150 rows | Small chats keep true CSS sticky date labels and simple DOM; large chats get a floating date label | Two render paths, sharing one row model and one scroll container |
-| Mock backend in the browser, with failures and latency | Loading, error, retry and offline states really happen during a demo (3% of reads and 5% of writes fail) | Errors appear occasionally by design; every one has a Retry |
+| Mock backend in the browser, with latency and optional failure injection | Loading states are visible during a demo, and the API can inject read/write failures (used by the tests). Random failures are off by default; error and retry paths can be seen with **Settings → Simulate offline** | Failure injection is configured in code (`configureMockApi`), not from the UI |
 | Persist the backend in IndexedDB rather than client stores | The "server" stays the single source of truth, so a reload behaves like a real app fetching fresh data | Stored attachments are data URLs (capped at 2 MB, with photos scaled down) |
 | `queued` status and an outbox | Offline sends are clearly different from failed ones and survive a reload | The outbox is in LocalStorage (about 5 MB), hence the attachment cap |
 | Realtime behind `RealtimeTransport` | The in-memory simulator needs no setup; the WebSocket path proves the abstraction works against a real socket | In WebSocket mode the server starts from seed data, so it doesn't know about members you added or removed (see limitations) |
@@ -205,7 +211,7 @@ mock-server/             # Node WebSocket server (npm run dev:ws)
 
 ## Testing
 
-**292 tests in 40 files**, with coverage of **98.2% of statements and 91.7% of branches**. Thresholds are enforced in `vite.config.ts`, and the vendored shadcn primitives and type-only files are excluded.
+**309 tests in 42 files**, with coverage of **97.8% of statements and 91.6% of branches**. Thresholds are enforced in `vite.config.ts`, and the vendored shadcn primitives and type-only files are excluded.
 
 | Area | What's covered |
 |---|---|

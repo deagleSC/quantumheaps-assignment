@@ -42,3 +42,10 @@ export const useOutboxStore = create<OutboxStore>()(
     { name: 'outbox-store' },
   ),
 )
+
+// The outbox lives in localStorage, shared by every tab: pick up other tabs' changes.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'quantum-chat-outbox') void useOutboxStore.persist.rehydrate()
+  })
+}
