@@ -22,7 +22,21 @@ export interface CreateMockDbOptions {
   /** Timestamp seed history ends at. Defaults to now. */
   now?: number
   seed?: number
+  /** Restore previously persisted data instead of generating seed data. */
+  snapshot?: MockDbSnapshot
 }
+
+/** Everything the fake backend stores, in a structured-clone friendly shape. */
+export interface MockDbSnapshot {
+  currentUserId: UserId
+  users: User[]
+  conversations: Conversation[]
+  messages: Record<ConversationId, Message[]>
+}
+
+/** Storage keys a write touched; lets persistence rewrite only what changed. */
+export type ChangeKey = 'users' | 'conversations' | `messages:${ConversationId}`
+export const messagesKey = (id: ConversationId): ChangeKey => `messages:${id}`
 
 /**
  * The fake backend's storage. Synchronous and free of latency or failures,
@@ -36,8 +50,24 @@ export class MockDb {
   /** Messages per conversation, ascending by `createdAt`. */
   private messagesByConversation = new Map<ConversationId, Message[]>()
   private messagesById = new Map<MessageId, Message>()
+  private listeners = new Set<(keys: ChangeKey[]) => void>()
 
-  constructor({ now = Date.now(), seed = 42 }: CreateMockDbOptions = {}) {
+  constructor({ now = Date.now(), seed = 42, snapshot }: CreateMockDbOptions = {}) {
+    if (snapshot) this.hydrate(snapshot)
+    else this.seed(now, seed)
+  }
+
+  private hydrate(snapshot: MockDbSnapshot) {
+    for (const u of snapshot.users) this.users.set(u.id, u)
+    for (const c of snapshot.conversations) {
+      this.conversations.set(c.id, c)
+      const messages = snapshot.messages[c.id] ?? []
+      this.messagesByConversation.set(c.id, messages)
+      for (const m of messages) this.messagesById.set(m.id, m)
+    }
+  }
+
+  private seed(now: number, seed: number) {
     const rng = createRng(seed)
 
     for (const u of seedUsers) {
@@ -86,6 +116,39 @@ export class MockDb {
       this.conversations.set(conversation.id, conversation)
       this.messagesByConversation.set(conversation.id, messages)
       for (const m of messages) this.messagesById.set(m.id, m)
+    }
+  }
+
+  // ---------- change tracking & snapshots ----------
+
+  /** Subscribe to writes. Returns an unsubscribe function. */
+  onChange(listener: (keys: ChangeKey[]) => void): () => void {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  private changed(...keys: ChangeKey[]) {
+    for (const listener of this.listeners) listener(keys)
+  }
+
+  /** Every storage key the database currently has. */
+  allKeys(): ChangeKey[] {
+    return ['users', 'conversations', ...[...this.conversations.keys()].map(messagesKey)]
+  }
+
+  /** Full message list of a conversation (for persistence). */
+  getAllMessages(conversationId: ConversationId): Message[] {
+    return this.requireMessages(conversationId).map(clone)
+  }
+
+  toSnapshot(): MockDbSnapshot {
+    return {
+      currentUserId: this.currentUserId,
+      users: this.getUsers(),
+      conversations: this.getConversations(),
+      messages: Object.fromEntries(
+        [...this.conversations.keys()].map((id) => [id, this.getAllMessages(id)]),
+      ),
     }
   }
 
@@ -180,6 +243,7 @@ export class MockDb {
       reactions: [],
     })
     this.requireConversation(conversationId).unreadCount += 1
+    this.changed('conversations')
     return message
   }
 
@@ -190,6 +254,7 @@ export class MockDb {
     if (!trimmed) throw new MockDbError('invalid', 'Message is empty')
     m.content = trimmed
     m.editedAt = new Date(now).toISOString()
+    this.changed(messagesKey(m.conversationId))
     return clone(m)
   }
 
@@ -200,6 +265,7 @@ export class MockDb {
     m.content = ''
     m.reactions = []
     m.attachment = undefined
+    this.changed(messagesKey(m.conversationId))
     return clone(m)
   }
 
@@ -208,18 +274,21 @@ export class MockDb {
     const m = this.requireMessage(id)
     if (m.isDeleted) throw new MockDbError('invalid', 'Cannot react to a deleted message')
     m.reactions = toggleReactionList(m.reactions, emoji, userId)
+    this.changed(messagesKey(m.conversationId))
     return clone(m)
   }
 
   setMessageStatus(id: MessageId, status: Message['status']): Message {
     const m = this.requireMessage(id)
     m.status = status
+    this.changed(messagesKey(m.conversationId))
     return clone(m)
   }
 
   markConversationRead(id: ConversationId): Conversation {
     const c = this.requireConversation(id)
     c.unreadCount = 0
+    this.changed('conversations')
     return clone(c)
   }
 
@@ -227,6 +296,7 @@ export class MockDb {
     const u = this.requireUser(userId)
     u.isOnline = isOnline
     u.lastSeen = isOnline ? undefined : new Date(now).toISOString()
+    this.changed('users')
     return clone(u)
   }
 
@@ -236,6 +306,7 @@ export class MockDb {
     if (toAdd.length === 0) throw new MockDbError('invalid', 'No new members to add')
     toAdd.forEach((id) => this.requireUser(id))
     group.memberIds.push(...toAdd)
+    this.changed('conversations')
     const names = toAdd.map((id) => this.requireUser(id).name).join(', ')
     const systemMessage = this.insertSystemMessage(group.id, `You added ${names}`, now)
     return { conversation: clone(group), systemMessage }
@@ -249,6 +320,7 @@ export class MockDb {
       throw new MockDbError('not_found', 'User is not a member')
     group.memberIds = group.memberIds.filter((id) => id !== userId)
     group.adminIds = group.adminIds.filter((id) => id !== userId)
+    this.changed('conversations')
     const systemMessage = this.insertSystemMessage(
       group.id,
       `You removed ${this.requireUser(userId).name}`,
@@ -279,6 +351,7 @@ export class MockDb {
     this.messagesById.set(message.id, message)
     conversation.lastMessageId = message.id
     conversation.updatedAt = message.createdAt
+    this.changed(messagesKey(message.conversationId), 'conversations')
     return clone(message)
   }
 

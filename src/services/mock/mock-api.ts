@@ -4,6 +4,13 @@ import type { Conversation, GroupConversation } from '@/types/conversation.types
 import type { Message, MessagePage, SendMessageInput } from '@/types/message.types'
 import type { User } from '@/types/user.types'
 import { MockDb } from './mock-db'
+import {
+  clearPersisted,
+  createPersister,
+  isPersistenceAvailable,
+  loadSnapshot,
+  type Persister,
+} from './persistence'
 
 export class MockApiError extends Error {
   constructor(message: string) {
@@ -13,8 +20,11 @@ export class MockApiError extends Error {
 }
 
 let config: MockApiConfig = { ...defaultMockApiConfig }
-let db = new MockDb()
+// Created lazily: seeding 10k+ messages is skipped when persisted data exists.
+let db: MockDb | null = null
 let random: () => number = Math.random
+let ready: Promise<void> = Promise.resolve()
+let persister: Persister | null = null
 
 /** Override latency/failure settings (tests use zero latency and no failures). */
 export function configureMockApi(overrides: Partial<MockApiConfig> & { random?: () => number }) {
@@ -23,15 +33,53 @@ export function configureMockApi(overrides: Partial<MockApiConfig> & { random?: 
   if (rng) random = rng
 }
 
-/** Fresh seed data, e.g. between tests. */
+/** Fresh seed data without persistence, e.g. between tests. */
 export function resetMockApi(options?: ConstructorParameters<typeof MockDb>[0]) {
+  persister?.dispose()
+  persister = null
+  ready = Promise.resolve()
   db = new MockDb(options)
   config = { ...defaultMockApiConfig }
   random = Math.random
 }
 
+/**
+ * Loads the persisted database (IndexedDB) if there is one, otherwise seeds a
+ * new one, and saves every later change. Requests wait for this to finish.
+ */
+export function initMockApi({ persist }: { persist: boolean }): Promise<void> {
+  ready = (async () => {
+    if (!persist || !isPersistenceAvailable()) return
+    try {
+      const snapshot = await loadSnapshot()
+      db = snapshot ? new MockDb({ snapshot }) : new MockDb()
+      persister?.dispose()
+      persister = createPersister(db, { saveAllNow: !snapshot })
+    } catch (error) {
+      console.warn('[mock-api] persistence unavailable, using in-memory data', error)
+    }
+  })()
+  return ready
+}
+
+/** Wipes persisted data and starts again from fresh seed data. */
+export async function resetPersistedData(): Promise<void> {
+  await ready
+  persister?.dispose()
+  persister = null
+  await clearPersisted()
+  db = new MockDb()
+  if (isPersistenceAvailable()) {
+    persister = createPersister(db, { saveAllNow: true })
+    await persister.flush()
+  }
+}
+
+/** Writes pending changes now (tests and page unload). */
+export const flushPersistence = () => persister?.flush() ?? Promise.resolve()
+
 /** Shared with the realtime simulator, which writes incoming messages directly. */
-export const getMockDb = () => db
+export const getMockDb = (): MockDb => (db ??= new MockDb())
 
 type Kind = 'read' | 'write'
 
@@ -39,7 +87,8 @@ type Kind = 'read' | 'write'
  * Wraps a DB call with network-like latency and random failures.
  * The DB runs after the delay, so a failed request never changes data.
  */
-function request<T>(kind: Kind, label: string, run: (db: MockDb) => T): Promise<T> {
+async function request<T>(kind: Kind, label: string, run: (db: MockDb) => T): Promise<T> {
+  await ready
   const { min, max } = config.latency
   const delay = min + random() * Math.max(0, max - min)
   const failureRate = kind === 'read' ? config.readFailureRate : config.writeFailureRate
@@ -50,7 +99,7 @@ function request<T>(kind: Kind, label: string, run: (db: MockDb) => T): Promise<
         return
       }
       try {
-        resolve(run(db))
+        resolve(run(getMockDb()))
       } catch (error) {
         reject(error)
       }
@@ -101,6 +150,12 @@ export const mockApi = {
     userId: UserId,
   ): Promise<{ conversation: GroupConversation; systemMessage: Message }> =>
     request('write', 'remove the member', (d) => d.removeMember(id, userId)),
+
+  /** Demo helper: wipe persisted data and reseed. */
+  resetDemoData: (): Promise<void> => resetPersistedData(),
 }
 
 export type MockApi = typeof mockApi
+
+// In the browser, persist the fake backend to IndexedDB. Tests opt in explicitly.
+if (import.meta.env.MODE !== 'test') void initMockApi({ persist: true })

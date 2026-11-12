@@ -16,6 +16,7 @@ export { messageActions, isTempId } from './zustand/actions/message-actions'
 export type { NewMessage } from './zustand/actions/message-actions'
 export { groupActions } from './zustand/actions/group-actions'
 export { realtimeActions } from './zustand/actions/realtime-actions'
+export { appActions } from './zustand/actions/app-actions'
 
 // Selectors: pure derived data
 export * from './zustand/selectors/conversation-selectors'
