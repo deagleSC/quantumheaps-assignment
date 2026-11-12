@@ -39,6 +39,15 @@ export type ChangeKey = 'users' | 'conversations' | `messages:${ConversationId}`
 export const messagesKey = (id: ConversationId): ChangeKey => `messages:${id}`
 
 /**
+ * A record-level change, used to replicate writes between browser tabs.
+ * Applying ops is idempotent (records are replaced by id).
+ */
+export type DbOp =
+  | { type: 'message'; message: Message }
+  | { type: 'conversation'; conversation: Conversation }
+  | { type: 'user'; user: User }
+
+/**
  * The fake backend's storage. Synchronous and free of latency or failures,
  * so the API layer and the realtime simulator can share it.
  * Every read returns copies, so callers can never mutate stored data.
@@ -51,6 +60,9 @@ export class MockDb {
   private messagesByConversation = new Map<ConversationId, Message[]>()
   private messagesById = new Map<MessageId, Message>()
   private listeners = new Set<(keys: ChangeKey[]) => void>()
+  private opListeners = new Set<(op: DbOp) => void>()
+  /** True while applying another tab's op, so it isn't broadcast back. */
+  private applyingRemote = false
 
   constructor({ now = Date.now(), seed = 42, snapshot }: CreateMockDbOptions = {}) {
     if (snapshot) this.hydrate(snapshot)
@@ -140,6 +152,70 @@ export class MockDb {
 
   private changed(...keys: ChangeKey[]) {
     for (const listener of this.listeners) listener(keys)
+  }
+
+  /** Subscribe to record-level changes made by this database (not ones applied from other tabs). */
+  onOp(listener: (op: DbOp) => void): () => void {
+    this.opListeners.add(listener)
+    return () => this.opListeners.delete(listener)
+  }
+
+  private emitOp(op: DbOp) {
+    if (this.applyingRemote) return
+    for (const listener of this.opListeners) listener(op)
+  }
+
+  private emitMessage(m: Message) {
+    this.emitOp({ type: 'message', message: clone(m) })
+  }
+
+  private emitConversation(id: ConversationId) {
+    this.emitOp({ type: 'conversation', conversation: clone(this.requireConversation(id)) })
+  }
+
+  /**
+   * Applies a change made in another tab. Messages are upserted by id (kept in
+   * time order); a conversation keeps whichever "latest message" is newer.
+   * Returns whether a message was new to this database.
+   */
+  applyRemote(op: DbOp): { isNew: boolean } {
+    this.applyingRemote = true
+    try {
+      if (op.type === 'message') {
+        const message = structuredClone(op.message)
+        const list = this.requireMessages(message.conversationId)
+        const existing = this.messagesById.get(message.id)
+        if (existing) {
+          list[list.indexOf(existing)] = message
+        } else {
+          let i = list.length
+          while (i > 0 && list[i - 1]!.createdAt > message.createdAt) i--
+          list.splice(i, 0, message)
+        }
+        this.messagesById.set(message.id, message)
+        this.changed(messagesKey(message.conversationId))
+        return { isNew: !existing }
+      }
+      if (op.type === 'conversation') {
+        const incoming = structuredClone(op.conversation)
+        const local = this.conversations.get(incoming.id)
+        if (local && local.updatedAt > incoming.updatedAt) {
+          incoming.lastMessageId = local.lastMessageId
+          incoming.updatedAt = local.updatedAt
+        }
+        this.conversations.set(incoming.id, incoming)
+        if (!this.messagesByConversation.has(incoming.id)) {
+          this.messagesByConversation.set(incoming.id, [])
+        }
+        this.changed('conversations')
+        return { isNew: !local }
+      }
+      this.users.set(op.user.id, structuredClone(op.user))
+      this.changed('users')
+      return { isNew: false }
+    } finally {
+      this.applyingRemote = false
+    }
   }
 
   /** Every storage key the database currently has. */
@@ -248,6 +324,7 @@ export class MockDb {
     if (message.senderId !== this.currentUserId && message.kind === 'text') {
       this.requireConversation(message.conversationId).unreadCount += 1
       this.changed('conversations')
+      this.emitConversation(message.conversationId)
     }
     return saved
   }
@@ -271,6 +348,7 @@ export class MockDb {
     })
     this.requireConversation(conversationId).unreadCount += 1
     this.changed('conversations')
+    this.emitConversation(conversationId)
     return message
   }
 
@@ -282,6 +360,7 @@ export class MockDb {
     m.content = trimmed
     m.editedAt = new Date(now).toISOString()
     this.changed(messagesKey(m.conversationId))
+    this.emitMessage(m)
     return clone(m)
   }
 
@@ -293,6 +372,7 @@ export class MockDb {
     m.reactions = []
     m.attachment = undefined
     this.changed(messagesKey(m.conversationId))
+    this.emitMessage(m)
     return clone(m)
   }
 
@@ -302,6 +382,7 @@ export class MockDb {
     if (m.isDeleted) throw new MockDbError('invalid', 'Cannot react to a deleted message')
     m.reactions = toggleReactionList(m.reactions, emoji, userId)
     this.changed(messagesKey(m.conversationId))
+    this.emitMessage(m)
     return clone(m)
   }
 
@@ -309,6 +390,7 @@ export class MockDb {
     const m = this.requireMessage(id)
     m.status = status
     this.changed(messagesKey(m.conversationId))
+    this.emitMessage(m)
     return clone(m)
   }
 
@@ -316,6 +398,7 @@ export class MockDb {
     const c = this.requireConversation(id)
     c.unreadCount = 0
     this.changed('conversations')
+    this.emitConversation(c.id)
     return clone(c)
   }
 
@@ -324,6 +407,7 @@ export class MockDb {
     u.isOnline = isOnline
     u.lastSeen = isOnline ? undefined : new Date(now).toISOString()
     this.changed('users')
+    this.emitOp({ type: 'user', user: clone(u) })
     return clone(u)
   }
 
@@ -334,6 +418,7 @@ export class MockDb {
     toAdd.forEach((id) => this.requireUser(id))
     group.memberIds.push(...toAdd)
     this.changed('conversations')
+    this.emitConversation(group.id)
     const names = toAdd.map((id) => this.requireUser(id).name).join(', ')
     const systemMessage = this.insertSystemMessage(group.id, `You added ${names}`, now)
     return { conversation: clone(group), systemMessage }
@@ -348,6 +433,7 @@ export class MockDb {
     group.memberIds = group.memberIds.filter((id) => id !== userId)
     group.adminIds = group.adminIds.filter((id) => id !== userId)
     this.changed('conversations')
+    this.emitConversation(group.id)
     const systemMessage = this.insertSystemMessage(
       group.id,
       `You removed ${this.requireUser(userId).name}`,
@@ -379,6 +465,8 @@ export class MockDb {
     conversation.lastMessageId = message.id
     conversation.updatedAt = message.createdAt
     this.changed(messagesKey(message.conversationId), 'conversations')
+    this.emitMessage(message)
+    this.emitConversation(conversation.id)
     return clone(message)
   }
 

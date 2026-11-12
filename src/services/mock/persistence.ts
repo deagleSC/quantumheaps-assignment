@@ -76,6 +76,8 @@ export const acquireWriterLock: WriterLock = (onAcquired) => {
 export interface Persister {
   /** Writes pending changes now (also used on page hide). */
   flush: () => Promise<void>
+  /** Whether this tab currently holds the single-writer lock. */
+  isWriter: () => boolean
   dispose: () => void
 }
 
@@ -90,7 +92,8 @@ export function createPersister(
     delayMs = 1000,
     saveAllNow = false,
     lock = acquireWriterLock,
-  }: { delayMs?: number; saveAllNow?: boolean; lock?: WriterLock } = {},
+    onWriter,
+  }: { delayMs?: number; saveAllNow?: boolean; lock?: WriterLock; onWriter?: () => void } = {},
 ): Persister {
   const dirty = new Set<ChangeKey>()
   let isWriter = false
@@ -138,6 +141,7 @@ export function createPersister(
 
   const releaseLock = lock(() => {
     isWriter = true
+    onWriter?.()
     // Taking over (or first save): write everything so keys stay consistent.
     db.allKeys().forEach((k) => dirty.add(k))
     void flush()
@@ -145,6 +149,7 @@ export function createPersister(
 
   return {
     flush,
+    isWriter: () => isWriter,
     dispose: () => {
       releaseLock()
       unsubscribe()

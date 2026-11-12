@@ -5,7 +5,9 @@ import type { Message, MessagePage, SendMessageInput } from '@/types/message.typ
 import type { User } from '@/types/user.types'
 import { OFFLINE_MESSAGE } from '@/shared/lib/network'
 import type { ServerFrame } from '@/services/realtime/protocol'
-import { MockDb } from './mock-db'
+import { type DbOp, MockDb } from './mock-db'
+import { createTabSync, type TabSync } from './tab-sync'
+import { TypedEmitter } from './typed-emitter'
 import {
   clearPersisted,
   createPersister,
@@ -28,6 +30,40 @@ let random: () => number = Math.random
 let ready: Promise<void> = Promise.resolve()
 let persister: Persister | null = null
 let offline = false
+let sync: TabSync | null = null
+
+// ---------- multiple tabs ----------
+
+/**
+ * The "leader" tab holds the single-writer lock: it saves to IndexedDB and is
+ * the only one generating simulated background activity. Without persistence
+ * (tests, the Node server) this tab is always the leader.
+ */
+let leader = true
+const tabEvents = new TypedEmitter<{
+  leadership: boolean
+  remote: { op: DbOp; isNew: boolean }
+}>()
+
+export const isLeaderTab = () => leader
+export const onLeadershipChange = (listener: (isLeader: boolean) => void) =>
+  tabEvents.on('leadership', listener)
+/** Changes made in other tabs (already applied to this tab's database). */
+export const onRemoteChange = (listener: (change: { op: DbOp; isNew: boolean }) => void) =>
+  tabEvents.on('remote', listener)
+
+function setLeader(next: boolean) {
+  if (leader === next) return
+  leader = next
+  tabEvents.emit('leadership', next)
+}
+
+function startPersistence(target: MockDb, saveAllNow: boolean) {
+  persister?.dispose()
+  setLeader(false)
+  persister = createPersister(target, { saveAllNow, onWriter: () => setLeader(true) })
+  sync?.attach(target)
+}
 
 /** Simulates losing the network: every request fails fast until switched back. */
 export function setMockNetworkOnline(online: boolean) {
@@ -45,6 +81,9 @@ export function configureMockApi(overrides: Partial<MockApiConfig> & { random?: 
 export function resetMockApi(options?: ConstructorParameters<typeof MockDb>[0]) {
   persister?.dispose()
   persister = null
+  sync?.dispose()
+  sync = null
+  setLeader(true)
   ready = Promise.resolve()
   db = new MockDb(options)
   config = { ...defaultMockApiConfig }
@@ -60,10 +99,21 @@ export function initMockApi({ persist }: { persist: boolean }): Promise<void> {
   ready = (async () => {
     if (!persist || !isPersistenceAvailable()) return
     try {
+      sync?.dispose()
+      sync = createTabSync({
+        onRemoteOp: (op, info) => tabEvents.emit('remote', { op, ...info }),
+        onReset: () => typeof window !== 'undefined' && window.location.reload(),
+        onFlushRequest: async () => {
+          if (!persister?.isWriter()) return false
+          await persister.flush()
+          return true
+        },
+      })
+      // Another tab may hold unsaved changes: have it save before we read.
+      await sync.requestFlush()
       const snapshot = await loadSnapshot()
       db = snapshot ? new MockDb({ snapshot }) : new MockDb()
-      persister?.dispose()
-      persister = createPersister(db, { saveAllNow: !snapshot || db.repaired })
+      startPersistence(db, !snapshot || db.repaired)
     } catch (error) {
       console.warn('[mock-api] persistence unavailable, using in-memory data', error)
     }
@@ -78,9 +128,11 @@ export async function resetPersistedData(): Promise<void> {
   persister = null
   await clearPersisted()
   db = new MockDb()
+  // Other tabs hold the old data in memory: make them reload, or they'd save it back.
+  sync?.broadcastReset()
   if (isPersistenceAvailable()) {
-    persister = createPersister(db, { saveAllNow: true })
-    await persister.flush()
+    startPersistence(db, true)
+    await persister!.flush()
   }
 }
 

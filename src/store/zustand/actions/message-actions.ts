@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid'
 import { handleError } from '@/shared/lib/handle-error'
 import { isOfflineError } from '@/shared/lib/network'
+import { withTabLock } from '@/shared/lib/tab-lock'
 import { notify } from '@/shared/lib/notify'
 import { toggleReaction } from '@/shared/lib/reactions'
 import type { ConversationId, MessageId } from '@/types/common.types'
@@ -128,6 +129,8 @@ export const messageActions = {
   flushOutbox: (): Promise<void> => {
     if (flushing) return flushing
     const run = async () => {
+      // Another tab may have queued or already sent some of these.
+      await useOutboxStore.persist.rehydrate()
       for (const queued of [...useOutboxStore.getState().queue]) {
         if (!isOnline()) return
         const messages = useMessageStore.getState()
@@ -140,7 +143,8 @@ export const messageActions = {
     // Clear the in-flight marker in `.finally` (always asynchronous). Clearing
     // it inside `run` would happen *before* the assignment when the outbox is
     // empty, leaving a settled promise behind that blocks every later flush.
-    const current: Promise<void> = run().finally(() => {
+    // One tab flushes at a time, so a message is never sent twice.
+    const current: Promise<void> = withTabLock('quantum-chat-outbox-flush', run).finally(() => {
       if (flushing === current) flushing = null
     })
     flushing = current
