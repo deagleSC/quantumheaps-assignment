@@ -29,6 +29,22 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
-    coverage: { reporter: ['text', 'html'] },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'text', 'html'],
+      include: ['src/**', 'mock-server/**'],
+      exclude: [
+        'src/shared/components/ui/**', // vendored shadcn/ui primitives
+        'src/test/**',
+        '**/__tests__/**',
+        '**/*.test.*',
+        'src/main.tsx',
+        'src/**/*.d.ts',
+        'src/types/**', // type-only modules
+        'src/services/realtime/transport.ts', // interface only
+        'mock-server/server.ts', // CLI entry; the server itself is tested
+      ],
+      thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
+    },
   },
 })

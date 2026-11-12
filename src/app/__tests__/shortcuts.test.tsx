@@ -1,5 +1,5 @@
 import type { MockInstance } from 'vitest'
-import { fireEvent, renderHook } from '@testing-library/react'
+import { act, fireEvent, renderHook } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConversationSidebar } from '@/features/conversations/components/conversation-sidebar'
 import { conversationActions, useConversationStore, useUiStore, useUserStore } from '@/store'
@@ -100,8 +100,9 @@ describe('global shortcuts', () => {
 it('shows the unread total in the tab title', () => {
   renderHook(() => useUnreadDocumentTitle())
   expect(document.title).toBe('(3) Quantum Chat')
-  useConversationStore.getState().setUnreadCount('c1', 0)
-  useConversationStore.getState().setUnreadCount('g1', 0)
-  renderHook(() => useUnreadDocumentTitle())
+  act(() => {
+    useConversationStore.getState().setUnreadCount('c1', 0)
+    useConversationStore.getState().setUnreadCount('g1', 0)
+  })
   expect(document.title).toBe('Quantum Chat')
 })

@@ -1,4 +1,7 @@
-import { configureMockApi, resetMockApi } from '@/services/mock/mock-api'
+import { configureMockApi, mockApi, resetMockApi } from '@/services/mock/mock-api'
+import { notify } from '@/shared/lib/notify'
+import { appActions } from '@/store'
+import { appServices } from '../services/app-services'
 import { conversationServices } from '../services/conversation-services'
 import { groupServices } from '../services/group-services'
 import { messageServices } from '../services/message-services'
@@ -8,6 +11,8 @@ beforeEach(() => {
   resetMockApi({ now: Date.parse('2026-11-12T12:00:00Z') })
   configureMockApi({ latency: { min: 0, max: 0 }, readFailureRate: 0, writeFailureRate: 0 })
 })
+
+vi.mock('@/shared/lib/notify')
 
 describe('services against the mock API', () => {
   it('loads the inbox with previews for every chat that has messages', async () => {
@@ -60,5 +65,53 @@ describe('services against the mock API', () => {
 
   it('surfaces validation errors from the backend', async () => {
     await expect(groupServices.removeMember('c-priya', 'u-priya')).rejects.toThrow('is not a group')
+  })
+})
+
+describe('services wrap every failure in a readable Error', () => {
+  beforeEach(() => configureMockApi({ readFailureRate: 1, writeFailureRate: 1 }))
+
+  it.each([
+    ['userServices.getCurrentUserId', () => userServices.getCurrentUserId(), 'load your profile'],
+    ['userServices.getAll', () => userServices.getAll(), 'load contacts'],
+    [
+      'conversationServices.markRead',
+      () => conversationServices.markRead('c-liam'),
+      'mark the chat as read',
+    ],
+    ['messageServices.getPage', () => messageServices.getPage('c-liam'), 'load messages'],
+    ['messageServices.edit', () => messageServices.edit('x', 'y'), 'edit the message'],
+    ['messageServices.remove', () => messageServices.remove('x'), 'delete the message'],
+    [
+      'messageServices.toggleReaction',
+      () => messageServices.toggleReaction('x', '👍'),
+      'react to the message',
+    ],
+    [
+      'groupServices.addMembers',
+      () => groupServices.addMembers('g-design', ['u-omar']),
+      'add members',
+    ],
+  ] as const)('%s', async (_, call, label) => {
+    await expect(call()).rejects.toThrow(`Network error while trying to ${label}`)
+  })
+
+  it('appServices.resetDemoData', async () => {
+    const spy = vi.spyOn(mockApi, 'resetDemoData').mockRejectedValue('boom')
+    await expect(appServices.resetDemoData()).rejects.toThrow('boom')
+    spy.mockRejectedValue({})
+    await expect(appServices.resetDemoData()).rejects.toThrow('Could not reset the demo data')
+  })
+})
+
+describe('appActions.resetDemoData', () => {
+  it('reports failures instead of reloading', async () => {
+    vi.spyOn(appServices, 'resetDemoData').mockRejectedValue(
+      new Error('Could not reset the demo data'),
+    )
+    const reload = vi.fn()
+    await appActions.resetDemoData(reload)
+    expect(reload).not.toHaveBeenCalled()
+    expect(notify.error).toHaveBeenCalledWith('Could not reset the demo data')
   })
 })
