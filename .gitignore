@@ -27,3 +27,7 @@ dist
 coverage
 *.local
 .DS_Store
+
+# Local working notes and the assignment brief (not published)
+IMPLEMENTATION_PLAN.md
+*.pdf

@@ -227,4 +227,4 @@ Beyond unit tests, every phase was checked in headless Chrome:
 
 ## Project history
 
-The project was built in phases (see [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)), with one commit per phase or sub-phase. Core requirements are tagged `v1-core`; the optional challenges follow in commits 9.1–9.5.
+The project was built in phases, with one commit per phase or sub-phase. Core requirements are tagged `v1-core`; the optional challenges follow in commits 9.1–9.5.
