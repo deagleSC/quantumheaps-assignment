@@ -9,7 +9,7 @@ import {
 import { resetStores } from '@/test/reset-stores'
 import { conversationServices } from '../services/conversation-services'
 import { realtimeServices, type RealtimeHandlers } from '../services/realtime-services'
-import { at, direct, message, user } from './fixtures'
+import { at, direct, message, user } from '@/test/fixtures'
 
 vi.mock('../services/realtime-services')
 vi.mock('../services/conversation-services')

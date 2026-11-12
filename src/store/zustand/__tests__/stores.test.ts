@@ -6,7 +6,7 @@ import {
   useUserStore,
 } from '@/store'
 import { resetStores } from '@/test/reset-stores'
-import { at, direct, message, user } from './fixtures'
+import { at, direct, message, user } from '@/test/fixtures'
 
 beforeEach(resetStores)
 

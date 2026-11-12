@@ -1,7 +1,7 @@
 import { groupActions, useConversationStore, useMessageStore } from '@/store'
 import { resetStores } from '@/test/reset-stores'
 import { groupServices } from '../services/group-services'
-import { at, group, message } from './fixtures'
+import { at, group, message } from '@/test/fixtures'
 
 vi.mock('../services/group-services')
 

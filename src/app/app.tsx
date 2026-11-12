@@ -1,19 +1,19 @@
-import { MessagesSquare } from 'lucide-react'
-import { EmptyState } from '@/shared/components/empty-state'
+import { useEffect } from 'react'
 import { TooltipProvider } from '@/shared/components/ui/tooltip'
 import { Toaster } from '@/shared/components/ui/sonner'
+import { conversationActions } from '@/store'
+import { AppLayout } from './app-layout'
+import { useRealtimeBridge } from './hooks/use-realtime-bridge'
 
-/** App shell. Layout, sidebar and chat window arrive in Phases 4–5. */
 export function App() {
+  useEffect(() => {
+    void conversationActions.loadInbox()
+  }, [])
+  useRealtimeBridge()
+
   return (
     <TooltipProvider delayDuration={300}>
-      <main className="bg-chat-bg flex h-full items-center justify-center">
-        <EmptyState
-          icon={MessagesSquare}
-          title="Quantum Chat"
-          description="Project foundations are ready."
-        />
-      </main>
+      <AppLayout />
       <Toaster />
     </TooltipProvider>
   )

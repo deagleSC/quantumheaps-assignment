@@ -9,7 +9,7 @@ import { notify } from '@/shared/lib/notify'
 import { resetStores } from '@/test/reset-stores'
 import { messageServices } from '../services/message-services'
 import { realtimeServices } from '../services/realtime-services'
-import { at, direct, message } from './fixtures'
+import { at, direct, message } from '@/test/fixtures'
 
 vi.mock('../services/message-services')
 vi.mock('../services/realtime-services')

@@ -5,7 +5,7 @@ import {
   getTotalUnread,
   getTypingLabel,
 } from '@/store'
-import { direct, group, message, user } from './fixtures'
+import { direct, group, message, user } from '@/test/fixtures'
 
 const usersById = { u1: user('u1', 'Ada Lovelace'), u2: user('u2', 'Bob Stone', false) }
 const byId = {

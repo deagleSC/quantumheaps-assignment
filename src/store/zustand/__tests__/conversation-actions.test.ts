@@ -9,7 +9,7 @@ import { resetStores } from '@/test/reset-stores'
 import { conversationServices } from '../services/conversation-services'
 import { messageServices } from '../services/message-services'
 import { userServices } from '../services/user-services'
-import { direct, message, user } from './fixtures'
+import { direct, message, user } from '@/test/fixtures'
 
 vi.mock('../services/conversation-services')
 vi.mock('../services/message-services')
@@ -92,4 +92,15 @@ describe('open / markRead', () => {
     conversationActions.close()
     expect(useUiStore.getState().activeConversationId).toBeNull()
   })
+})
+
+it('does not start a second inbox load while one is in flight', async () => {
+  vi.mocked(userServices.getCurrentUserId).mockResolvedValue('me')
+  vi.mocked(userServices.getAll).mockResolvedValue([])
+  vi.mocked(conversationServices.getInbox).mockResolvedValue({
+    conversations: [],
+    lastMessages: [],
+  })
+  await Promise.all([conversationActions.loadInbox(), conversationActions.loadInbox()])
+  expect(conversationServices.getInbox).toHaveBeenCalledOnce()
 })

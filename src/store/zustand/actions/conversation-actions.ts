@@ -13,6 +13,8 @@ export const conversationActions = {
   loadInbox: async (): Promise<void> => {
     const conversations = useConversationStore.getState()
     const users = useUserStore.getState()
+    // StrictMode mounts effects twice in development; one request is enough.
+    if (conversations.status === 'loading') return
     conversations.setStatus('loading')
     users.setStatus('loading')
     try {
