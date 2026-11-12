@@ -134,6 +134,14 @@ describe('RealtimeSimulator background activity', () => {
     expect(events).toHaveLength(count)
   })
 
+  it('configure() changes timing and randomness', () => {
+    sim.configure({ config: { deliveredDelayMs: 10 } })
+    const msg = send()
+    sim.handleOutgoingMessage(msg)
+    vi.advanceTimersByTime(10)
+    expect(db.getMessage(msg.id).status).toBe('delivered')
+  })
+
   it('unsubscribe and dispose remove listeners', () => {
     const off = sim.on('message:new', vi.fn())
     expect(sim.listenerCount('message:new')).toBe(2)

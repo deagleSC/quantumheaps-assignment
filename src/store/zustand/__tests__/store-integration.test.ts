@@ -23,6 +23,9 @@ beforeEach(() => {
     writeFailureRate: 0,
     random: () => 0,
   })
+  // Deterministic simulator: always reply, pick the first participant, and
+  // keep background chatter (12 s+) outside this test's time window.
+  realtimeSimulator.configure({ random: () => 0 })
 })
 afterEach(() => {
   realtimeSimulator.stop()

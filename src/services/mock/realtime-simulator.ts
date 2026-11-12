@@ -37,8 +37,8 @@ type Timer = ReturnType<typeof setTimeout>
  */
 export class RealtimeSimulator {
   private readonly emitter = new TypedEmitter<RealtimeEventMap>()
-  private readonly config: RealtimeSimulatorConfig
-  private readonly random: Rng
+  private config: RealtimeSimulatorConfig
+  private random: Rng
   private readonly getDb: () => MockDb
   private timers = new Set<Timer>()
   private intervals = new Set<ReturnType<typeof setInterval>>()
@@ -50,6 +50,12 @@ export class RealtimeSimulator {
     this.config = { ...defaultRealtimeConfig, ...options.config }
     this.random = options.random ?? Math.random
     this.getDb = options.getDb ?? getMockDb
+  }
+
+  /** Adjusts timing or randomness (tests make the shared instance deterministic). */
+  configure(options: Pick<RealtimeSimulatorOptions, 'config' | 'random'>): void {
+    if (options.config) this.config = { ...this.config, ...options.config }
+    if (options.random) this.random = options.random
   }
 
   get isRunning() {

@@ -149,3 +149,17 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Flash a message when jumping to it from a reply quote. */
+@keyframes highlight {
+  0%,
+  40% {
+    background-color: color-mix(in oklch, var(--primary) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.animate-highlight {
+  animation: highlight 1.6s ease-out;
+}

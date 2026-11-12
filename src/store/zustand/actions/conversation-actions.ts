@@ -38,7 +38,11 @@ export const conversationActions = {
 
   /** Opens a conversation: loads its history once and marks it read. */
   open: async (id: ConversationId): Promise<void> => {
-    useUiStore.getState().setActiveConversation(id)
+    const ui = useUiStore.getState()
+    if (ui.activeConversationId === id) return
+    ui.setActiveConversation(id)
+    const unread = useConversationStore.getState().byId[id]?.unreadCount ?? 0
+    if (unread > 0) ui.setUnreadMarker({ conversationId: id, count: unread })
     const timeline = useMessageStore.getState().byConversation[id]
     const needsHistory = !timeline || timeline.status === 'error' || timeline.status === 'idle'
     await Promise.all([

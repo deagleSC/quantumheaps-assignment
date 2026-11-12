@@ -7,19 +7,20 @@ afterEach(() => {
 })
 
 // jsdom gaps that Radix, virtualisation and the app rely on.
+// A plain function (not vi.fn) so vi.restoreAllMocks() in a test can't wipe it.
 if (!window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
+    value: (query: string): MediaQueryList => ({
       matches: false,
       media: query,
       onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
   })
 }
 

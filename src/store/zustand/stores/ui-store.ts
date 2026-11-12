@@ -11,6 +11,11 @@ export interface UiState {
   editingId: MessageId | null
   isInfoPanelOpen: boolean
   theme: ThemePreference
+  /**
+   * Unread count captured when the open chat was opened, so the
+   * "Unread messages" divider stays put after the badge is cleared.
+   */
+  unreadMarker: { conversationId: ConversationId; count: number } | null
 }
 
 export interface UiStoreActions {
@@ -22,6 +27,7 @@ export interface UiStoreActions {
   setEditing: (id: MessageId | null) => void
   setInfoPanelOpen: (open: boolean) => void
   setTheme: (theme: ThemePreference) => void
+  setUnreadMarker: (marker: UiState['unreadMarker']) => void
 }
 
 export type UiStore = UiState & UiStoreActions
@@ -34,6 +40,7 @@ export const initialUiState: UiState = {
   editingId: null,
   isInfoPanelOpen: false,
   theme: 'system',
+  unreadMarker: null,
 }
 
 export const useUiStore = create<UiStore>()(
@@ -42,13 +49,14 @@ export const useUiStore = create<UiStore>()(
       (set) => ({
         ...initialUiState,
         setActiveConversation: (activeConversationId) =>
-          set({ activeConversationId, replyingToId: null, editingId: null }),
+          set({ activeConversationId, replyingToId: null, editingId: null, unreadMarker: null }),
         setFilter: (filter) => set({ filter }),
         setSearch: (search) => set({ search }),
         setReplyingTo: (replyingToId) => set({ replyingToId, editingId: null }),
         setEditing: (editingId) => set({ editingId, replyingToId: null }),
         setInfoPanelOpen: (isInfoPanelOpen) => set({ isInfoPanelOpen }),
         setTheme: (theme) => set({ theme }),
+        setUnreadMarker: (unreadMarker) => set({ unreadMarker }),
       }),
       {
         name: 'quantum-chat-ui',

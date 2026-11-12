@@ -65,8 +65,17 @@ describe('open / markRead', () => {
     expect(useUiStore.getState().activeConversationId).toBe('c1')
     expect(useConversationStore.getState().byId.c1?.unreadCount).toBe(0)
     expect(conversationServices.markRead).toHaveBeenCalledWith('c1')
+    expect(useUiStore.getState().unreadMarker).toEqual({ conversationId: 'c1', count: 3 })
+    conversationActions.close()
     await conversationActions.open('c1')
     expect(messageServices.getPage).toHaveBeenCalledOnce()
+  })
+
+  it('does nothing when the chat is already open', async () => {
+    await conversationActions.open('c1')
+    useConversationStore.getState().setUnreadCount('c1', 2)
+    await conversationActions.open('c1')
+    expect(conversationServices.markRead).toHaveBeenCalledOnce()
   })
 
   it('retries history that failed before', async () => {
