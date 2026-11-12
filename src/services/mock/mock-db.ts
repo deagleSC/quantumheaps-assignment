@@ -60,12 +60,23 @@ export class MockDb {
   private hydrate(snapshot: MockDbSnapshot) {
     for (const u of snapshot.users) this.users.set(u.id, u)
     for (const c of snapshot.conversations) {
-      this.conversations.set(c.id, c)
       const messages = snapshot.messages[c.id] ?? []
+      // Self-heal data saved out of step (e.g. by two tabs before single-writer
+      // locking): the "latest message" must exist in the conversation.
+      if (c.lastMessageId && !messages.some((m) => m.id === c.lastMessageId)) {
+        const last = messages[messages.length - 1]
+        c.lastMessageId = last?.id
+        if (last) c.updatedAt = last.createdAt
+        this.repaired = true
+      }
+      this.conversations.set(c.id, c)
       this.messagesByConversation.set(c.id, messages)
       for (const m of messages) this.messagesById.set(m.id, m)
     }
   }
+
+  /** True if hydrate() had to fix inconsistent saved data (it should then be re-saved). */
+  repaired = false
 
   private seed(now: number, seed: number) {
     const rng = createRng(seed)
@@ -170,9 +181,10 @@ export class MockDb {
 
   /** Last message of every conversation (for sidebar previews). */
   getLastMessages(): Message[] {
-    return [...this.conversations.values()].flatMap((c) =>
-      c.lastMessageId ? [clone(this.requireMessage(c.lastMessageId))] : [],
-    )
+    return [...this.conversations.values()].flatMap((c) => {
+      const last = c.lastMessageId ? this.messagesById.get(c.lastMessageId) : undefined
+      return last ? [clone(last)] : []
+    })
   }
 
   getConversation(id: ConversationId): Conversation {

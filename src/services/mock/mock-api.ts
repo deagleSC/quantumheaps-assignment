@@ -63,7 +63,7 @@ export function initMockApi({ persist }: { persist: boolean }): Promise<void> {
       const snapshot = await loadSnapshot()
       db = snapshot ? new MockDb({ snapshot }) : new MockDb()
       persister?.dispose()
-      persister = createPersister(db, { saveAllNow: !snapshot })
+      persister = createPersister(db, { saveAllNow: !snapshot || db.repaired })
     } catch (error) {
       console.warn('[mock-api] persistence unavailable, using in-memory data', error)
     }

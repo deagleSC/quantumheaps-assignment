@@ -44,6 +44,35 @@ export async function clearPersisted(): Promise<void> {
   if (isPersistenceAvailable()) await clear(getStore())
 }
 
+/**
+ * Single-writer lock across tabs (Web Locks API). Each tab keeps its own
+ * in-memory database; if two tabs both saved their dirty keys, one tab's
+ * conversation list could point at messages the other tab overwrote. The
+ * lock holder is the only tab that saves; when it closes, the next tab gets
+ * the lock and saves its complete state. Without Web Locks: single writer.
+ * Returns a release function.
+ */
+export type WriterLock = (onAcquired: () => void) => () => void
+
+export const LOCK_NAME = 'quantum-chat-mock-db-writer'
+
+export const acquireWriterLock: WriterLock = (onAcquired) => {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+  if (!locks?.request) {
+    onAcquired()
+    return () => {}
+  }
+  let release: () => void = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  locks
+    .request(LOCK_NAME, () => {
+      onAcquired()
+      return held // keep the lock until this tab goes away (or dispose)
+    })
+    .catch(() => {})
+  return () => release()
+}
+
 export interface Persister {
   /** Writes pending changes now (also used on page hide). */
   flush: () => Promise<void>
@@ -57,9 +86,14 @@ export interface Persister {
  */
 export function createPersister(
   db: MockDb,
-  { delayMs = 1000, saveAllNow = false }: { delayMs?: number; saveAllNow?: boolean } = {},
+  {
+    delayMs = 1000,
+    saveAllNow = false,
+    lock = acquireWriterLock,
+  }: { delayMs?: number; saveAllNow?: boolean; lock?: WriterLock } = {},
 ): Persister {
   const dirty = new Set<ChangeKey>()
+  let isWriter = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let saving: Promise<void> = Promise.resolve()
 
@@ -72,7 +106,8 @@ export function createPersister(
   const flush = () => {
     if (timer) clearTimeout(timer)
     timer = null
-    if (dirty.size === 0) return saving
+    // Not the writer tab: keep changes in memory only (see acquireWriterLock).
+    if (!isWriter || dirty.size === 0) return saving
     const keys = [...dirty]
     dirty.clear()
     const meta: Meta = {
@@ -99,14 +134,19 @@ export function createPersister(
   const onPageHide = () => void flush()
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide)
 
-  if (saveAllNow) {
+  if (saveAllNow) db.allKeys().forEach((k) => dirty.add(k))
+
+  const releaseLock = lock(() => {
+    isWriter = true
+    // Taking over (or first save): write everything so keys stay consistent.
     db.allKeys().forEach((k) => dirty.add(k))
     void flush()
-  }
+  })
 
   return {
     flush,
     dispose: () => {
+      releaseLock()
       unsubscribe()
       if (timer) clearTimeout(timer)
       if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide)
