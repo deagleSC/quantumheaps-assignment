@@ -68,6 +68,12 @@ export const mockApi = {
   getUsers: (): Promise<User[]> => request('read', 'load contacts', (d) => d.getUsers()),
   getConversations: (): Promise<Conversation[]> =>
     request('read', 'load conversations', (d) => d.getConversations()),
+  /** Conversations plus their last messages, like a typical inbox endpoint. */
+  getInbox: (): Promise<{ conversations: Conversation[]; lastMessages: Message[] }> =>
+    request('read', 'load conversations', (d) => ({
+      conversations: d.getConversations(),
+      lastMessages: d.getLastMessages(),
+    })),
   getMessages: (
     conversationId: ConversationId,
     opts?: { before?: MessageId; limit?: number },

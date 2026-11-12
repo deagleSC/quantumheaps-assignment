@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { toggleReaction as toggleReactionList } from '@/shared/lib/reactions'
 import type { ConversationId, MessageId, UserId } from '@/types/common.types'
 import type { Conversation, GroupConversation } from '@/types/conversation.types'
 import type { Message, SendMessageInput } from '@/types/message.types'
@@ -104,6 +105,13 @@ export class MockDb {
       .map(clone)
   }
 
+  /** Last message of every conversation (for sidebar previews). */
+  getLastMessages(): Message[] {
+    return [...this.conversations.values()].flatMap((c) =>
+      c.lastMessageId ? [clone(this.requireMessage(c.lastMessageId))] : [],
+    )
+  }
+
   getConversation(id: ConversationId): Conversation {
     return clone(this.requireConversation(id))
   }
@@ -199,15 +207,7 @@ export class MockDb {
   toggleReaction(id: MessageId, emoji: string, userId: UserId = this.currentUserId): Message {
     const m = this.requireMessage(id)
     if (m.isDeleted) throw new MockDbError('invalid', 'Cannot react to a deleted message')
-    const existing = m.reactions.find((r) => r.emoji === emoji)
-    if (!existing) {
-      m.reactions.push({ emoji, userIds: [userId] })
-    } else if (existing.userIds.includes(userId)) {
-      existing.userIds = existing.userIds.filter((u) => u !== userId)
-      if (existing.userIds.length === 0) m.reactions = m.reactions.filter((r) => r !== existing)
-    } else {
-      existing.userIds.push(userId)
-    }
+    m.reactions = toggleReactionList(m.reactions, emoji, userId)
     return clone(m)
   }
 

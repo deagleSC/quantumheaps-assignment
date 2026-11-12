@@ -8,7 +8,8 @@ import type { MockDb } from './mock-db'
 import { TypedEmitter } from './typed-emitter'
 
 /** Events pushed from the fake server to the client. */
-export interface RealtimeEventMap extends Record<string, unknown> {
+// A type alias (not an interface) so keys stay literal and it satisfies Record<string, unknown>.
+export type RealtimeEventMap = {
   'message:new': { message: Message }
   'message:status': { conversationId: ConversationId; messageId: MessageId; status: MessageStatus }
   'typing:start': { conversationId: ConversationId; userId: UserId }
